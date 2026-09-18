@@ -52,3 +52,7 @@ It in necessary to pull all dependent submodules: sensors, graphic libraries, st
 
 - [ ] Etl library (https://github.com/ETLCPP/etl.git)
 - [ ] FreeRTOS (https://github.com/FreeRTOS)
+
+## Contacts
+
+relsartmail@gmail.com
