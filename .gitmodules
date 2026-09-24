@@ -1,0 +1,12 @@
+[submodule "src/thirdParty/etl"]
+	path = src/thirdParty/etl
+	url = https://github.com/ETLCPP/etl.git
+[submodule "src/modules"]
+	path = src/modules
+	url = https://github.com/Relsart/MCU_Modules.git
+[submodule "src/libs/sensorlib"]
+	path = src/libs/sensorlib
+	url = https://github.com/Relsart/Sensor_Library.git
+[submodule "src/libs/graphiclib"]
+	path = src/libs/graphiclib
+	url = https://github.com/Relsart/Graphic_Library.git
