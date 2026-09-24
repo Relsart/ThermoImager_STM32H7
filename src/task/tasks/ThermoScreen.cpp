@@ -80,33 +80,11 @@ void TermoScreen::imageUpdate(const thermomatrix::ThermoArray& newThermData)
     m_minVal = *result.first;
     m_maxVal = *result.second;
 
-    uint16_t coilCounter = 0;
-    uint16_t xStart = 0;
-    uint16_t yStart = 0;
-
-    /* Fill the Image Buffer with pixels values */
-    for (int ind = 0; ind < newThermData.size; ind++)
-    {
-        // Get pixel colour code:
-        rgb565 pixel = getTemperatureColor(newThermData.data[ind], m_minVal, m_maxVal);
-
-        // Fill the rectangle (one point) area:
-        for (int i = 0; i < m_ImgPointSideSize; i++)
-        {
-            for (int j = 0; j < m_ImgPointSideSize; j++)
-            {
-                m_imgBuffer[yStart + j][xStart + i] = pixel;
-            }
-        }
-        // Shift start position:
-        xStart += m_ImgPointSideSize;
-        // Switch to the new row:
-        if (xStart >= m_ImgCoilsPixSize)
-        {
-            xStart = 0;
-            yStart += m_ImgPointSideSize;
-        }
-    }
+    #ifdef INTERPOLATION_RENDER
+    interpolationRender(newThermData);
+    #else
+    simpleRender(newThermData);
+    #endif
 
     /* Make the Upper Layer (cross center aiming point): */
     for (int i = 0; i < m_ImgCoilsPixSize; i++)
@@ -123,6 +101,105 @@ void TermoScreen::imageUpdate(const thermomatrix::ThermoArray& newThermData)
     /* Start data uploading to the display: */
     m_display.locateArea(m_pictureStartPoint, m_pictureEndPoint);
     m_display.sendPixels((uint16_t*)m_imgBuffer, m_ImgCoilsPixSize * m_ImgRowsPixSize);
+}
+
+void TermoScreen::simpleRender(const thermomatrix::ThermoArray& newThermData)
+{
+    uint16_t xStart = 0;
+    uint16_t yStart = 0;
+
+    // Fill the Image Buffer with pixels values:
+    for (int ind = 0; ind < newThermData.size; ind++)
+    {
+        // Get pixel colour code:
+        rgb565 pixel = getTemperatureColor(newThermData.data[ind], m_minVal, m_maxVal);
+
+        // Fill the rectangle (one point) area:
+        for (int i = 0; i < m_ImgScale; i++)
+        {
+            for (int j = 0; j < m_ImgScale; j++)
+            {
+                m_imgBuffer[yStart + j][xStart + i] = pixel;
+            }
+        }
+        // Shift start position:
+        xStart += m_ImgScale;
+        // Switch to the new row:
+        if (xStart >= m_ImgCoilsPixSize)
+        {
+            xStart = 0;
+            yStart += m_ImgScale;
+        }
+    }
+}
+
+void TermoScreen::interpolationRender(const thermomatrix::ThermoArray& newThermData)
+{
+    auto frameBuffer = reinterpret_cast<uint16_t*>(m_imgBuffer);
+
+    // Precalculating the zoom level for the frame
+    float range = m_maxVal - m_minVal;
+    if (range < 0.001f)
+        range = 0.001f;   // Null division protection
+
+    // Inverse range calculating
+    float invRange = 255.0 / range;
+
+    // Calculation of the palette index to a fixed point with 12 bits accuracy:
+    int32_t scaleFactorFp = (int32_t)(invRange * 4096.0f);
+    int32_t tMinFp = (int32_t)(m_minVal * 100.0f);
+
+    // The main cycle of bilinear interpolation:
+    for (int ty = 0; ty < (m_MatrixRows - 1); ty++)
+    {
+        for (int tx = 0; tx < (m_MatrixCoils - 1); tx++)
+        {
+            // Get the float values of 4 neighboring pixels and scale them (*100) to an integer:
+            int32_t c00 = static_cast<int32_t>(newThermData.data[ty * m_MatrixCoils + tx] * 100.0);
+            int32_t c10 = static_cast<int32_t>(newThermData.data[ty * m_MatrixCoils + (tx + 1)] * 100.0);
+            int32_t c01 = static_cast<int32_t>(newThermData.data[(ty + 1) * m_MatrixCoils + tx] * 100.0);
+            int32_t c11 = static_cast<int32_t>(newThermData.data[(ty + 1) * m_MatrixCoils + (tx + 1)] * 100.0);
+
+            // Interpolation inside the thermo-pixel block:
+            for (int y = 0; y < m_ImgScale; y++)
+            {
+                int32_t wTop = m_ImgScale - y;
+                int32_t wBot = y;
+
+                // Calculating the offset of the screen row:
+                int screenRowOffset = (ty * m_ImgScale + y) * 256;
+                for (int x = 0; x < m_ImgScale; x++)
+                {
+                    int32_t w00 = (m_ImgScale - x) * wTop;
+                    int32_t w10 = x * wTop;
+                    int32_t w01 = (m_ImgScale - x) * wBot;
+                    int32_t w11 = x * wBot;
+                    // Get the interpolated temperature multiplied by 100:
+                    int32_t tempScaled = (c00 * w00 + c10 * w10 + c01 * w01 + c11 * w11) >> 6;
+
+                    // Calculation of the palette array index:
+                    int32_t tempDiff = tempScaled - tMinFp;
+                    int32_t index;
+                    if (tempDiff <= 0)
+                    {
+                        index = 0;
+                    }
+                    else
+                    {
+                        // Multiply the difference by the calculated coefficient,
+                        // and remove the scale (*100) and the fixed point (>> 12):
+                        index = (tempDiff * scaleFactorFp) / 100;
+                        index >>= 12;
+                        if (index > 255)
+                            index = 255;
+                    }
+                    // Write to the screen buffer:
+                    int screenX = tx * m_ImgScale + x;
+                    frameBuffer[screenRowOffset + screenX] = Palette_Ironbow[index];
+                }
+            }
+        }
+    }
 }
 
 void TermoScreen::printString(Coordnt begin, const char* str, uint16_t size, const Font* font, rgb565 fontClr, rgb565 bkgrClr)

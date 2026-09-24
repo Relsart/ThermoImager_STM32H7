@@ -13,6 +13,12 @@
 using namespace graphic;
 
 /**
+ * @brief Option for linear interpolation rendering type (smoothing image)
+ * @details ACHTUNG: For the processor time optimisation it works with powers-of-two scales (m_ImgScale)!
+ */
+#define INTERPOLATION_RENDER
+
+/**
  * @brief Thermo picture builder
  * 
  * @details SLOT for MLX90640 measurements data struct
@@ -49,11 +55,11 @@ private:
     SemaphoreHandle_t mainBufFreeSemphr;    // Semaphore: Main Pixels Buffer is free (no DMA process uses it) 
     
     /* Screen coodrinates variables: */
-    static const uint16_t m_MatrixCoils = MLX90640_COLUMN_NUM;  // Number of thermomatrix coils
-    static const uint16_t m_MatrixRows = MLX90640_LINE_NUM;     // Number of thermomatrix rows
-    static const uint16_t m_ImgPointSideSize = 8;               // Size of one logical thermoframe pixel (in screen pixels)
-    static const uint16_t m_ImgCoilsPixSize = m_ImgPointSideSize * m_MatrixCoils;    // Number of coils in thermoframe (in screen pixels)
-    static const uint16_t m_ImgRowsPixSize = m_ImgPointSideSize * m_MatrixRows;      // Number of rows in thermoframe (in screen pixels)
+    static const uint16_t m_MatrixCoils = MLX90640_COLUMN_NUM;              // Number of thermomatrix coils
+    static const uint16_t m_MatrixRows = MLX90640_LINE_NUM;                 // Number of thermomatrix rows
+    static const uint16_t m_ImgScale = 8;                                   // Size of one logical thermoframe pixel (in screen pixels)
+    static const uint16_t m_ImgCoilsPixSize = m_ImgScale * m_MatrixCoils;   // Number of coils in thermoframe (in screen pixels) 256
+    static const uint16_t m_ImgRowsPixSize = m_ImgScale * m_MatrixRows;     // Number of rows in thermoframe (in screen pixels) 192
     const graphic::Coordnt m_pictureStartPoint;     // Coordinates of thermo picture rectangle start (upper left cornen)
     const graphic::Coordnt m_pictureEndPoint;       // Coordinates of thermo picture rectangle end (lower right cornen)
 
@@ -92,6 +98,19 @@ private:
      * @param [in] newThermData Pack of new measurements from the thermo-array sensor
      */
     void imageUpdate(const thermomatrix::ThermoArray& newThermData);
+
+    /**
+     * @brief Simple image rendering (colour squares with m_ImgScale side)
+     * @param [in] newThermData Link to the new measurements pack
+     */
+    void simpleRender(const thermomatrix::ThermoArray& newThermData);
+
+    /**
+     * @brief Image rendering with linear interpolation algorithm
+     * @details m_ImgScale must be a powers-of-two (2, 4, 8...)
+     * @param [in] newThermData Link to the new measurements pack
+     */
+    void interpolationRender(const thermomatrix::ThermoArray& newThermData);
 
     /**
      * @brief Converts the metadata (measurements) to strings and outputs to the display
