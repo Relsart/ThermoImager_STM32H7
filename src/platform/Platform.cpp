@@ -43,7 +43,7 @@ Peripheral peripheral;
  *
  */
 
-Mcu::Mcu () : console(USART2, 128),
+Mcu::Mcu () : console(USART2, consoleRB),
               screenSpi(SPI1),
               boardButton(GPIOE, 3, gpio::PinType::Input, gpio::Pull::PullUp, gpio::ExtiFront::FailingFront),
               boardLed(GPIOA, 1, gpio::PinType::Out_pushpull, gpio::Pull::NoPull),
@@ -98,7 +98,7 @@ void Mcu::init ()
     console.init(921600);
     console.setSlotRx(&(console::Terminal::getInstance()));
     console.onTxStream(&logStream);
-    console.setTxMode(uart::Mode::Dma);
+    console.setTxMode(uart::Port::Mode::Dma);
     console.setNvicPriority(4);
     
     Log::setTransmitter(Log::DataSender::create<uart::Port, &uart::Port::transmit>(console));
@@ -142,6 +142,13 @@ void Mcu::init ()
      * @brief ========== GPIO pin diagnostic against re-initialization: ==========
      */
     gpio::Pin::pinConfigDiagnostic();
+
+    /**
+     * @brief ========================= Enabling Cache: ==========================
+     * @details If confident that cache coherency issues will be resolved
+     */
+    //SCB_InvalidateDCache(); 
+    //SCB_EnableDCache();
 }
 
 
@@ -171,7 +178,6 @@ bool Peripheral::init()
     /* ST7796 Display initialisation: */
     graphic::st77xx::Config dicplayConf;
     dicplayConf.chip = graphic::st77xx::ChipType::St7796;
-    //dicplayConf.rotate90 = true;
     dicplayConf.colOrder = graphic::st77xx::ColourOrder::Bgr;
     if (m_display.init(dicplayConf))
     {

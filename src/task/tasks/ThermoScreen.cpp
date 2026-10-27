@@ -2,6 +2,7 @@
 #include "task/TaskData.h"
 #include <etl/algorithm.h>
 #include <etl/utility.h>
+#include <string.h>
 #include "driver/Dwt.h"
 #include "Loger.h"
 #include "Converters.h"
@@ -249,25 +250,42 @@ void TermoScreen::metaDataUpdate(const thermomatrix::ThermoArray& newThermData)
 
     /* Print the metadata strings */
     const graphic::Font *font = &font11x18;
-    char strBuff[10]{0};
-    Coordnt startPoint {32 + 14 * font->FontWidth, 232}; // Offset by 14 chars of head string "Center point: "
+    const uint8_t FullStringLength = 24;
+    char strBuff[FullStringLength]{0};
 
-    uint32_t strSize = conversions::FloatToString(m_centerPointTemp, strBuff, 1);
-    memcpy(m_stringBuffer, strBuff, strSize);
-    printString(startPoint, m_stringBuffer, strSize, font, RGB565_Green, RGB565_Black);
+    const uint8_t FirstStrPos = 14;
+    const uint8_t SecondStrPos = 7;
 
-    strSize = conversions::FloatToString(m_minVal, strBuff, 1);
-    startPoint = {32 + 7 * font->FontWidth, 255};    // Second string. Offset by 7 chars of head string "Center point: "
-    memcpy(m_stringBuffer, strBuff, strSize);
-    printString(startPoint, m_stringBuffer, strSize, font, RGB565_Green, RGB565_Black);
-
-    startPoint.x += strSize * font->FontWidth;
-    printString(startPoint, " to ", strSize, font, RGB565_Green, RGB565_Black);
+    /* Output the first string "Center point: XX.X" */
+    Coordnt startPoint {32 + SecondStrPos * font->FontWidth, 232};  // Offset by 14 chars of head string "Center point: "
+    uint32_t strSize = conversions::FloatToString(m_centerPointTemp, strBuff, (FullStringLength - FirstStrPos), 1, false);
+    uint32_t endSpaces = m_StringMaxLen - (FirstStrPos + strSize);
     
-    strSize = conversions::FloatToString(m_maxVal, strBuff, 1);
-    startPoint.x += 4 * font->FontWidth;
     memcpy(m_stringBuffer, strBuff, strSize);
-    printString(startPoint, m_stringBuffer, strSize, font, RGB565_Green, RGB565_Black);
+    memset(&m_stringBuffer[strSize], ' ', endSpaces);
+    printString(startPoint, m_stringBuffer, strSize + endSpaces, font, RGB565_Green, RGB565_Black);
+
+    /* Output the second string "Range: XX.X to XX.X" */
+    startPoint = {32 + SecondStrPos * font->FontWidth, 255};    // Second string. Offset by 7 chars of head string "Range: "
+    uint32_t currentPos = conversions::FloatToString(m_minVal, strBuff, (FullStringLength - SecondStrPos), 1, false);
+
+    const char* toDivStr = " to ";
+    size_t divLen = strlen(toDivStr);
+
+    if (SecondStrPos + currentPos + divLen <= FullStringLength)
+    { 
+        strcpy((char*)&strBuff[currentPos], toDivStr);
+        currentPos += divLen;
+    }
+
+    currentPos += conversions::FloatToString(m_maxVal, &strBuff[currentPos], (FullStringLength - (SecondStrPos + currentPos)), 1, false);
+    if (SecondStrPos + currentPos <= FullStringLength)
+    {
+        endSpaces = m_StringMaxLen - (SecondStrPos + currentPos);
+        memcpy(m_stringBuffer, strBuff, currentPos);
+        memset(&m_stringBuffer[currentPos], ' ', endSpaces);
+        printString(startPoint, m_stringBuffer, currentPos + endSpaces, font, RGB565_Green, RGB565_Black);
+    }
 }
 
 void TermoScreen::spiXferFinishHandler()
@@ -300,9 +318,9 @@ void TermoScreen::pictureBuildTask(void* pvParameters)
     if (instance)
     {
         /* Startup initialisation: print some info strings: */
-        
         instance->printString({32, 232}, "Center point: ", 14, &font11x18, RGB565_Green, RGB565_Black);
         instance->printString({32, 255}, "Range: ", 7, &font11x18, RGB565_Green, RGB565_Black);
+
         /* Entering the task loop: */
         for (;;)
         {

@@ -56,18 +56,16 @@ private:
     const uint32_t m_ExtFiltersAddr;                    // Start address of extended (29-bits) filters in CAN Message memory
     const uint32_t m_RxFifoAddr;                        // Start address of receiver FIFO in CAN Message memory
     const uint32_t m_TxFifoAddr;                        // Start address of transmitter FIFO in CAN Message memory
-    static const uint32_t m_ExtFiltersOffset = m_StdFiltersMaxCount * m_StdFilterWordSize * 2; // Offset (in 32-bit words units) of extended filterd area (after two standart filters areas)
-    static const uint32_t m_RxFifoOffset = m_ExtFiltersOffset + m_ExtFiltersMaxCount * m_ExtFilterWordSize * 2;    // Offset (in 32-bit words units) of rx FIFO area (for 2 CANs)
+    static const uint32_t m_ExtFiltersOffset = m_StdFiltersMaxCount * m_StdFilterWordSize * 2;                  // Offset (in 32-bit words units) of extended filterd area (after two standart filters areas)
+    static const uint32_t m_RxFifoOffset = m_ExtFiltersOffset + m_ExtFiltersMaxCount * m_ExtFilterWordSize * 2; // Offset (in 32-bit words units) of rx FIFO area (for 2 CANs)
     static const uint32_t m_TxFifoOffset = m_RxFifoOffset + m_RxFifoPacksCount * m_FifoPackWordSize * 2;        // Offset (in 32-bit words units) of tx FIFO area (for 2 CANs)
     static const uint32_t m_initTimeoutMs = 500;
 
-    FDCAN_GlobalTypeDef* const m_can;       // CAN base pointer
-    const uint8_t m_canNumber;              // Can bus number (0/1)
-    Config m_config;                        // Saved configuration (is necessary to be saved?)
-    Receiver receiver;                      // Receiver & filter manager
-    MessageRingBuffer<Message> m_txBuffer;  // Buffer for transmitting messages
-
-    
+    FDCAN_GlobalTypeDef* const m_can;           // CAN base pointer
+    const uint8_t m_canNumber;                  // Can bus number (0/1)
+    Config m_config;                            // Saved configuration (is necessary to be saved?)
+    Receiver receiver;                          // Receiver & filter manager
+    MessageRingBuffer<Message, 16> m_txBuffer;  // Buffer for transmitting messages
 
     static bool firstStart;     // First start flag (for any of CANs) 
 
@@ -83,7 +81,6 @@ private:
 
     bool enterInitMode();
     bool exitInitMode();
-
 };
 
 }   // namespace uart

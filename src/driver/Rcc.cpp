@@ -8,18 +8,18 @@ namespace driver {
  * @attention ACHTUNG! Do not forget to set quartz frequency (HSE_VALUE) in main CMakeLists.txt!
  */
 
-#if HSE_VALUE == 8000000
+#if HSE_VALUE == 8000000U
 /*  Settings for external 8 MHz quartz:
     SysClock = 64 MHz
     PLL1 out (P) = 64 MHz
     PLL1 out (Q) = 32 MHz
     PLL1 out (R) = 128 MHz  */
-/*#define DIVM_1  2
-#define DIVN_1  64
-#define DIVP_1  4
-#define DIVQ_1  8
-#define DIVR_1  2
-#define FRACN_1 0
+/*#define DIVM_1  2U
+#define DIVN_1  64U
+#define DIVP_1  4U
+#define DIVQ_1  8U
+#define DIVR_1  2U
+#define FRACN_1 0U
 #define HPRE_Prescaler  RCC_D1CFGR_HPRE_DIV1
 #define D2PRE RCC_D2CFGR_D2PPRE1_DIV1*/
 
@@ -28,12 +28,12 @@ namespace driver {
     PLL1 out (P) = 400 MHz
     PLL1 out (Q) = 200 MHz
     PLL1 out (R) = 400 MHz  */
-#define DIVM_1  2
-#define DIVN_1  200
-#define DIVP_1  2
-#define DIVQ_1  4   //(CHECK! For Display SPI)
-#define DIVR_1  2
-#define FRACN_1 0
+#define DIVM_1  2U
+#define DIVN_1  200U
+#define DIVP_1  2U
+#define DIVQ_1  4U   //(CHECK! For Display SPI)
+#define DIVR_1  2U
+#define FRACN_1 0U
 #define HPRE_Prescaler  RCC_D1CFGR_HPRE_DIV4
 #define D2PRE RCC_D2CFGR_D2PPRE1_DIV1
 
@@ -41,34 +41,40 @@ namespace driver {
     PLL3 out (P) = 100 MHz
     PLL3 out (Q) = 100 MHz
     PLL3 out (R) = 50 MHz   */
-#define DIVM_3  4
-#define DIVN_3  100
-#define DIVP_3  2
-#define DIVQ_3  2
-#define DIVR_3  4
-#define FRACN_3 0
+#define DIVM_3  4U
+#define DIVN_3  100U
+#define DIVP_3  2U
+#define DIVQ_3  2U
+#define DIVR_3  4U
+#define FRACN_3 0U
 
-
-#elif HSE_VALUE == 25000000
+#elif HSE_VALUE == 25000000U
 /*  Settings for external 25 MHz quartz:  */
 /*  SysClock = 400 MHz;  PLL1 out (P, Q, R) = 100 MHz  */
-#define DIVM_1  5
-#define DIVN_1  160
-#define DIVP_1  2
-#define DIVQ_1  8
-#define DIVR_1  8
-#define FRACN_1 0
+#define DIVM_1  5U
+#define DIVN_1  160U
+#define DIVP_1  2U
+#define DIVQ_1  8U
+#define DIVR_1  8U
+#define FRACN_1 0U
 #define HPRE_Prescaler  RCC_D1CFGR_HPRE_DIV4
 #define D2PRE RCC_D2CFGR_D2PPRE1_DIV1
 /*  SysClock = 100 MHz;  PLL1 out (P, Q, R) = 100 MHz  */
-// #define DIVM_1  8
-// #define DIVN_1  64
-// #define DIVP_1  2
-// #define DIVQ_1  2
-// #define DIVR_1  2
-// #define FRACN_1 0
+// #define DIVM_1  8U
+// #define DIVN_1  64U
+// #define DIVP_1  2U
+// #define DIVQ_1  2U
+// #define DIVR_1  2U
+// #define FRACN_1 0U
 // #define HPRE_Prescaler  RCC_D1CFGR_HPRE_DIV1
 // #define D2PRE RCC_D2CFGR_D2PPRE1_DIV2
+
+#define DIVM_3  5U
+#define DIVN_3  100U
+#define DIVP_3  8U
+#define DIVQ_3  8U
+#define DIVR_3  8U
+#define FRACN_3 0U
 #endif
 
 bool Rcc::extClockConfig()
@@ -108,10 +114,10 @@ bool Rcc::extClockConfig()
     SET_BIT(RCC->PLLCKSELR, RCC_PLLCKSELR_PLLSRC_HSE);                                         // Clock source for PLL = external quartz
     /* PLL1 configuration: */
     MODIFY_REG(RCC->PLLCKSELR, RCC_PLLCKSELR_DIVM1_Msk, DIVM_1 << RCC_PLLCKSELR_DIVM1_Pos);    // DIVM1 divider
-    MODIFY_REG(RCC->PLL1DIVR, RCC_PLL1DIVR_N1_Msk, (DIVN_1 - 1) << RCC_PLL1DIVR_N1_Pos);       // DIVN1 multiplier (the value in the register - 1)
-    MODIFY_REG(RCC->PLL1DIVR, RCC_PLL1DIVR_P1_Msk, (DIVP_1 - 1) << RCC_PLL1DIVR_P1_Pos);       // DIVP1 divider (the value in the register - 1)
-    MODIFY_REG(RCC->PLL1DIVR, RCC_PLL1DIVR_Q1_Msk, (DIVQ_1 - 1) << RCC_PLL1DIVR_Q1_Pos);       // DIVQ1 divider (the value in the register - 1)
-    MODIFY_REG(RCC->PLL1DIVR, RCC_PLL1DIVR_R1_Msk, (DIVR_1 - 1) << RCC_PLL1DIVR_R1_Pos);       // DIVR1 divider (the value in the register - 1)
+    MODIFY_REG(RCC->PLL1DIVR, RCC_PLL1DIVR_N1_Msk, (DIVN_1 - 1U) << RCC_PLL1DIVR_N1_Pos);       // DIVN1 multiplier (the value in the register - 1)
+    MODIFY_REG(RCC->PLL1DIVR, RCC_PLL1DIVR_P1_Msk, (DIVP_1 - 1U) << RCC_PLL1DIVR_P1_Pos);       // DIVP1 divider (the value in the register - 1)
+    MODIFY_REG(RCC->PLL1DIVR, RCC_PLL1DIVR_Q1_Msk, (DIVQ_1 - 1U) << RCC_PLL1DIVR_Q1_Pos);       // DIVQ1 divider (the value in the register - 1)
+    MODIFY_REG(RCC->PLL1DIVR, RCC_PLL1DIVR_R1_Msk, (DIVR_1 - 1U) << RCC_PLL1DIVR_R1_Pos);       // DIVR1 divider (the value in the register - 1)
     CLEAR_BIT(RCC->PLLCFGR, RCC_PLLCFGR_PLL1FRACEN);                        // Disable fracn divider
     CLEAR_BIT(RCC->PLLCFGR, RCC_PLLCFGR_PLL1VCOSEL);                        // Standart frequency range (192..836 MHz)
     MODIFY_REG(RCC->PLLCFGR, RCC_PLLCFGR_PLL1RGE, RCC_PLLCFGR_PLL1RGE_2);   // PLL1 output frequency range 4..8 MHz
@@ -126,10 +132,10 @@ bool Rcc::extClockConfig()
 
     /* PLL3 configuration: */
     MODIFY_REG(RCC->PLLCKSELR, RCC_PLLCKSELR_DIVM3_Msk, DIVM_3 << RCC_PLLCKSELR_DIVM3_Pos);    // DIVM3 divider
-    MODIFY_REG(RCC->PLL3DIVR, RCC_PLL3DIVR_N3_Msk, (DIVN_3 - 1) << RCC_PLL3DIVR_N3_Pos);       // DIVN3 multiplier (the value in the register - 1)
-    MODIFY_REG(RCC->PLL3DIVR, RCC_PLL3DIVR_P3_Msk, (DIVP_3 - 1) << RCC_PLL3DIVR_P3_Pos);       // DIVP3 divider (the value in the register - 1)
-    MODIFY_REG(RCC->PLL3DIVR, RCC_PLL3DIVR_Q3_Msk, (DIVQ_3 - 1) << RCC_PLL3DIVR_Q3_Pos);       // DIVQ3 divider (the value in the register - 1)
-    MODIFY_REG(RCC->PLL3DIVR, RCC_PLL3DIVR_R3_Msk, (DIVR_3 - 1) << RCC_PLL3DIVR_R3_Pos);       // DIVR3 divider (the value in the register - 1)
+    MODIFY_REG(RCC->PLL3DIVR, RCC_PLL3DIVR_N3_Msk, (DIVN_3 - 1U) << RCC_PLL3DIVR_N3_Pos);       // DIVN3 multiplier (the value in the register - 1)
+    MODIFY_REG(RCC->PLL3DIVR, RCC_PLL3DIVR_P3_Msk, (DIVP_3 - 1U) << RCC_PLL3DIVR_P3_Pos);       // DIVP3 divider (the value in the register - 1)
+    MODIFY_REG(RCC->PLL3DIVR, RCC_PLL3DIVR_Q3_Msk, (DIVQ_3 - 1U) << RCC_PLL3DIVR_Q3_Pos);       // DIVQ3 divider (the value in the register - 1)
+    MODIFY_REG(RCC->PLL3DIVR, RCC_PLL3DIVR_R3_Msk, (DIVR_3 - 1U) << RCC_PLL3DIVR_R3_Pos);       // DIVR3 divider (the value in the register - 1)
     CLEAR_BIT(RCC->PLLCFGR, RCC_PLLCFGR_PLL3FRACEN);                        // Disable fracn divider
     CLEAR_BIT(RCC->PLLCFGR, RCC_PLLCFGR_PLL3VCOSEL);                        // Standart frequency range (192..836 MHz)
     MODIFY_REG(RCC->PLLCFGR, RCC_PLLCFGR_PLL3RGE, RCC_PLLCFGR_PLL3RGE_2);   // PLL3 output frequency range 4..8 MHz
@@ -258,13 +264,13 @@ uint32_t Rcc::getPllFreqHz(Pll pll, PllOutDivider presc)
     switch (presc)
     {
     case PllOutDivider::P:
-        div = ((READ_BIT(pllDivReg, RCC_PLL1DIVR_P1)) >> RCC_PLL1DIVR_P1_Pos) + 1;
+        div = ((READ_BIT(pllDivReg, RCC_PLL1DIVR_P1)) >> RCC_PLL1DIVR_P1_Pos) + 1U;
         break;
     case PllOutDivider::Q:
-        div = ((READ_BIT(pllDivReg, RCC_PLL1DIVR_Q1)) >> RCC_PLL1DIVR_Q1_Pos) + 1;
+        div = ((READ_BIT(pllDivReg, RCC_PLL1DIVR_Q1)) >> RCC_PLL1DIVR_Q1_Pos) + 1U;
         break;
     case PllOutDivider::R:
-        div = ((READ_BIT(pllDivReg, RCC_PLL1DIVR_R1)) >> RCC_PLL1DIVR_R1_Pos) + 1;
+        div = ((READ_BIT(pllDivReg, RCC_PLL1DIVR_R1)) >> RCC_PLL1DIVR_R1_Pos) + 1U;
         break;
     }
 

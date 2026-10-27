@@ -4,6 +4,10 @@
 
 namespace console {
 
+/**
+ * @brief Command for RTOS tasks diagnostic information (memory limits)
+ *        Command name: task
+ */
 class CmdTask : public CmdInterface
 {
 private:

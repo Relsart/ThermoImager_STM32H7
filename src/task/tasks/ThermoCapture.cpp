@@ -9,15 +9,8 @@ namespace task
 
 ThermoMatrixManager::ThermoMatrixManager(driver::I2C* i2c, uint16_t devAddr) : m_i2c(i2c),
                                                                                m_i2cAddr(devAddr),
-                                                                               m_thermoDriver(devAddr)
-{
-    m_thermoDriver.setI2cTx(thermomatrix::Mlx90640::I2C_Tx::create<driver::I2C, &driver::I2C::masterTx>(*m_i2c));
-    m_thermoDriver.setI2cTxRx(thermomatrix::Mlx90640::I2C_TxRx::create<driver::I2C, &driver::I2C::masterTxRx>(*m_i2c));
-    m_thermoDriver.setI2cRxDMA(thermomatrix::Mlx90640::I2C_RxDMA::create<driver::I2C, &driver::I2C::readRegViaDMA_16bitAddr>(*m_i2c));
-
-    /* Connect the I2C Data Xfer Ready (for DMA mode) signal */
-    //m_i2c->xferCmpltSubscribeISR(this); // TODO: CHECK AND DEBUG if it works HERE!
-}
+                                                                               m_thermoDriver(*m_i2c, m_thermoBuffer, devAddr)
+{}
 
 void ThermoMatrixManager::setMeasConsumer(SlotInterface<const ThermoArray*>*slot)
 {

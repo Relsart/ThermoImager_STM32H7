@@ -10,7 +10,9 @@ void DmaTransceiver::run(dma::SignalPack, uint32_t)
 {
     /* Handler of DMA Transfer (Receive) Complete Interruption: */
     CLEAR_BIT(m_i2c->CR1, I2C_CR1_RXDMAEN); // Disable DMA Rx requests
-    if (m_holder.m_totalXferSize > 0)       // If there are some data left to read
+
+    /* There are some data left to read */
+    if (m_holder.m_totalXferSize > 0)       
     {
         m_holder.m_currentDestAddr += m_holder.m_currentXferSize;   // Offset the Rx buffer pointer
         if (m_holder.m_totalXferSize > m_holder.m_MaxNbytesSize)
@@ -30,7 +32,7 @@ void DmaTransceiver::run(dma::SignalPack, uint32_t)
             SET_BIT(m_i2c->CR1, I2C_CR1_TCIE);  // Enable Transfer Complete interruption
         }
     }
-    else    // If it was the Last Transaction 
+    else    /* It was the Last Transaction */
     {
         SET_BIT(m_i2c->CR1, I2C_CR1_TCIE | I2C_CR1_STOPIE);
     }

@@ -4,7 +4,7 @@
 namespace driver {
 namespace can {
 
-IrqHandler::IrqHandler(FDCAN_GlobalTypeDef* can, uint32_t fifoAddr) : m_RxFifoAddr(fifoAddr), m_can(can), m_buffer(512)
+IrqHandler::IrqHandler(FDCAN_GlobalTypeDef* can, uint32_t fifoAddr) : m_RxFifoAddr(fifoAddr), m_can(can)
 {
     Nvic* nvic = NvicManager::getInstance().getCanNvic(m_can);
     if (nvic)
@@ -53,13 +53,13 @@ void IrqHandler::run (uint8_t, uint32_t)
             if (msg.extended)
                 msg.id = element->id;
             else
-                msg.id = (element->id >> 18) & 0x7FF;
+                msg.id = (element->id >> 18U) & 0x7FF;
 
             for (int i = 0; i < msg.length; i++)
                 msg.data[i] = element->data[i];
 
             WRITE_REG (m_can->RXF0A, rxFifoIndex);  // Update FIFO index in the acknowledge register
-            m_buffer.write(msg);
+            m_buffer.push(msg);
             #ifndef WITH_RTOS
             m_rxDataSignal.activ(&m_buffer);
             #endif

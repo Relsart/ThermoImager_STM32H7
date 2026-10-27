@@ -18,12 +18,14 @@ private:
     friend class Bus;
     
     const uint32_t m_RxFifoAddr;                                // Address of Rx FIFO start in memory
-    MessageRingBuffer<Message> m_buffer;                        // Buffer for incoming CAN messages
+    MessageRingBuffer<Message, 16> m_buffer;                    // Buffer for incoming CAN messages
     volatile FDCAN_GlobalTypeDef* const m_can;                  // Address of CAN periphery
+
     #ifndef WITH_RTOS
-    SignalMainLoop<MessageRingBuffer<Message>*> m_rxDataSignal; // Signal for receiving a new message
+    SignalMainLoop<i_face::I_MessageRingBuffer<Message>*> m_rxDataSignal; // Signal for receiving a new message
     SignalMainLoop<Message*> m_txFinishedSignal;                // Signal for finished transmitting 
     #endif
+
     void run (uint8_t, uint32_t) override;
 
     /**

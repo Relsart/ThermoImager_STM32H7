@@ -1,6 +1,7 @@
 #pragma once
 
 #include "stm32h7xx.h"
+#include "Interface.h"
 #include "driver/nvic/NvicManager.h"
 #include "Transceiver.h"
 #include "TransceiverDma.h"
@@ -13,20 +14,10 @@ namespace driver {
 namespace uart {
 
 /**
- * @brief Working mode
- */
-enum class Mode { General, Dma };
-
-/**
- * @brief Enumeration for Parity setting
- */
-enum Parity { None, Even, Odd };
-
-/**
  * @brief UART base driver class
  * @details Slot for subscribers signals sending data to UART
  */
-class Port : public SlotInterface <uint8_t*>
+class Port : public i_face::I_Uart, public SlotInterface <uint8_t*>
 {
 public:
     friend class DmaTransceiver;
@@ -37,7 +28,7 @@ public:
      * @param [in] uart pointer to periphery device
      * @param [in] rxSize size of receiver ring buffer in bytes
      */
-    Port(USART_TypeDef* uart, uint32_t rxSize);
+    Port(USART_TypeDef* uart, i_face::I_RingBuffer& rxBuff);
 
     /**
      * @brief UART initialization
@@ -51,33 +42,34 @@ public:
      * @brief Send data to port
      * @details Depends on mode: general or DMA
      */
-    void transmit(void* data, uint32_t size);
+    void transmit(void* data, uint32_t size) override;
 
     /**
      * @brief Start receiving data via DMA stream
      * @param [in] size size of reading data
      * @param [in] circular Circular (endless) or single-pack receive transaction
      */
-    void receiveViaDma(uint16_t size, bool circular);
+    void receiveViaDma(uint16_t size, bool circular) override;
 
     /**
-     * @brief Subscribing client to reseiving data signals (Main Loop handler or Immediately activating)
-     * @note  ACHTUNG: It can be connected only one signal: Real or Offline (Deferred Interrupt Processing)! 
+     * @brief Subscribing client to reseiving Callback or Signals (Main Loop handler or Immediately activating)
+     * @note  ACHTUNG: It can be connected only one signal or callback: Real or Offline (Deferred Interrupt Processing)! 
      *                 Otherwise the second signal handler may get empty (or changed) data in ring buffer
      * @param [in] slot Target clients slot
      */
-    void setSlotRx(SlotInterface<RingBuffer*>*slot);
-    void setSlotInstantRx(SlotInterface<RingBuffer*>*slot);
+    void setSlotRx(SlotInterface<i_face::I_RingBuffer*>*slot);
+    void setSlotInstantRx(SlotInterface<i_face::I_RingBuffer*>*slot);
+    void setRxCallback(RxCallback h) override;
 
     /**
-     * @brief Set receiving mode (blocking(general) or DMA)
+     * @brief Set receiving mode (PIO or DMA)
      */
-    void setRxMode(Mode mode);
+    void setRxMode(Mode mode) override;
 
     /**
-     * @brief Set transmitting mode (blocking(general) or DMA)
+     * @brief Set transmitting mode (PIO or DMA)
      */
-    void setTxMode(Mode mode);
+    void setTxMode(Mode mode) override;
 
     /**
      * @brief Connect DMA Tx stream
@@ -110,21 +102,27 @@ public:
      */
     void setNvicPriority(uint16_t priority);
 
+    /**
+     * @brief Get link to Receiver ring buffer
+     */
+    i_face::I_RingBuffer& getBuffer() override;
+
 private:
-    USART_TypeDef* const m_uart;        // UART base pointer
-    const uint32_t rxRingBufferSize;    // Size of receiving ring buffer
-    RingBuffer m_rxRingBuffer;          // Receiving data ring buffer
-    uint32_t m_baudrate = 0;            // Port speed
-    Mode m_rxMode = Mode::General;      // Receiving mode (general/DMA)
-    Mode m_txMode = Mode::General;      // Transmitting mode (general/DMA)
-    DmaTransceiver m_dmaTransceiver;    // DMA transceiver
-    Transceiver m_transceiver;          // General tranceiver
+    USART_TypeDef* const m_uart;            // UART base pointer
+    const uint32_t rxRingBufferSize = 0;    // Size of receiving ring buffer
+    i_face::I_RingBuffer& m_rxRingBuffer;   // Receiving data ring buffer
+    uint32_t m_baudrate = 0;                // Port speed
+    Mode m_rxMode = Mode::Pio;              // Receiving mode (general/DMA)
+    Mode m_txMode = Mode::Pio;              // Transmitting mode (general/DMA)
+    DmaTransceiver m_dmaTransceiver;        // DMA transceiver
+    Transceiver m_transceiver;              // General tranceiver
     Nvic* nvic;
 
     #ifndef WITH_RTOS
-    SignalMainLoop <RingBuffer*> m_signalRx;  // Received data signal (handling in Main Loop, outside the interrupt handler)
+    SignalMainLoop <i_face::I_RingBuffer*> m_signalRx;    // Received data signal (handling in Main Loop, outside the interrupt handler)
     #endif
-    Signal <RingBuffer*> m_signalInstantRx;   // Received data signal (immediately handling)
+    Signal <i_face::I_RingBuffer*> m_signalInstantRx;     // Received data signal (immediately handling)
+    RxCallback m_rxCallback;                    // Received data callback
 
     static etl::map<uint8_t, Port*, 10> m_registeredUarts;    // Info about all registered ports
 

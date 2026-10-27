@@ -65,7 +65,8 @@ private:
 
     /* Buffers */
     uint16_t m_imgBuffer[m_ImgRowsPixSize][m_ImgCoilsPixSize]{0};   // Buffer for preparing and sending display data (as it uses DMA for speed)
-    char m_stringBuffer[100]{0};                    // Buffer for output strings data
+    static constexpr uint8_t m_StringMaxLen = 24;
+    char m_stringBuffer[m_StringMaxLen + 1]{0};     // Buffer for output strings data (24 symbols + \0)
     thermomatrix::ThermoArray m_receivedThermo;     // Thermo measurements, received from Matrix sensor
 
     /* Saved measurements */

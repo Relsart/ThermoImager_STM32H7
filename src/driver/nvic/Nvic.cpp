@@ -23,6 +23,11 @@ extern "C" void SysTick_Handler(void)
 }
 
 /**
+ * @brief TIMER interruptions handlers
+ */
+
+
+/**
  * @brief UART interruptions handlers
  */
 extern "C" void USART1_IRQHandler(void)  
@@ -240,9 +245,9 @@ extern "C" void SDMMC2_IRQHandler(void)
 extern "C" __attribute__((optimize("O0")))
 void hardFaultHandler(uint32_t* stack_address, uint32_t lr_reg)
 {
-    uint32_t pcIndex = 6;           // Default frame Program Counter index (without FPU)
-    if ((lr_reg & (1 << 4)) == 0)   // 4th bit in LR reg is type of frame (with/without the FPU)
-        pcIndex = 7;                // Extended frame Program Counter index (offset by FPU)
+    uint32_t pcIndex = 6;            // Default frame Program Counter index (without FPU)
+    if ((lr_reg & (1U << 4)) == 0)   // 4th bit in LR reg is type of frame (with/without the FPU)
+        pcIndex = 7;                 // Extended frame Program Counter index (offset by FPU)
 
     // Get saved registers from the stack.
     volatile uint32_t r0  = stack_address[0];
@@ -299,7 +304,7 @@ void hardFaultHandler(uint32_t* stack_address, uint32_t lr_reg)
 
 /**
  * @brief Hard Fault interruption handler
- * @details An assembler jump that doesn’t corrupt the stack before the analyzer is called
+ * @details An assembler jump that doesn't corrupt the stack before the analyzer is called
  */
 extern "C" void HardFault_Handler(void)
 {
@@ -307,7 +312,7 @@ extern "C" void HardFault_Handler(void)
         "tst lr, #4 \n"            // Check bit 2 in the Register Link (LR).
         "ite eq \n"                // If the bit is 0, then
         "mrseq r0, msp \n"         // .. error in the interrupt- take the Main Stack Pointer.
-        "mrsne r0, psp \n"         // .. otherwise, there’s an error in the thread- take the Process Stack Pointer.
+        "mrsne r0, psp \n"         // .. otherwise, there's an error in the thread- take the Process Stack Pointer.
         "mov r1, lr \n"            // Give LR register value as a second argument (EXC_RETURN, exception return code)
         "b hardFaultHandler \n"    // Invoke the C-function handler (the stack address is already in R0)
     );

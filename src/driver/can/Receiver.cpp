@@ -10,13 +10,13 @@ Receiver::Receiver(FDCAN_GlobalTypeDef* can, uint32_t fifoAddr) : m_irqHandler(c
     #endif
 }
 
-void Receiver::run(MessageRingBuffer<Message>* buffer, uint32_t)
+void Receiver::run(i_face::I_MessageRingBuffer<Message>* buffer, uint32_t)
 {
     if (!buffer)
         return;
 
     Message msg{0};
-    while (buffer->read(msg))
+    while (buffer->pop(msg))
     {
         for (auto filter = m_filtersList.begin(); filter != m_filtersList.end(); filter++)
         {

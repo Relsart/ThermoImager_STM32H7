@@ -76,7 +76,7 @@ void Spi::init(Config config)
         config.fifoThreshold = 1;    
     if (config.fifoThreshold > 16)  // max
         config.fifoThreshold = 16;   
-    MODIFY_REG(m_spi->CFG1, SPI_CFG1_FTHLV, (config.fifoThreshold - 1) << SPI_CFG1_FTHLV_Pos);    // value in reg -1
+    MODIFY_REG(m_spi->CFG1, SPI_CFG1_FTHLV, (config.fifoThreshold - 1U) << SPI_CFG1_FTHLV_Pos);    // value in reg -1
 
     // SlaveSelect signal management:
     if (config.nssMode == CsMode::Soft)

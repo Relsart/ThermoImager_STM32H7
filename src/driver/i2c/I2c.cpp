@@ -59,8 +59,8 @@ void I2C::init(Speed speed)
     }
     SET_BIT(timingRegVal, countL << I2C_TIMINGR_SCLL_Pos);
     SET_BIT(timingRegVal, countH << I2C_TIMINGR_SCLH_Pos);
-    SET_BIT(timingRegVal, (divider - 1) << I2C_TIMINGR_PRESC_Pos);
-    SET_BIT(timingRegVal, 2 << I2C_TIMINGR_SCLDEL_Pos);
+    SET_BIT(timingRegVal, (divider - 1U) << I2C_TIMINGR_PRESC_Pos);
+    SET_BIT(timingRegVal, 2U << I2C_TIMINGR_SCLDEL_Pos);
     #else
     timingRegVal = 0x10707DBC;   // A good timing for 100 kHz (at clock 64MHz)
     //0x00C02670;
@@ -91,7 +91,7 @@ void I2C::init(Speed speed)
         if (NvicManager::getInstance().getIrqNumber(reinterpret_cast<uint32_t>(m_i2c), irq))
             nvic->init(irq, 3, *this); // I2C NVIC priority must be lower, than its DMA stream NVIC priority
     }
-    m_busyDMA.store(false);
+    m_busyDMA.store(false, etl::memory_order_release);
 }
 
 void I2C::onRxStream(dma::Stream* stream)
@@ -350,9 +350,9 @@ void I2C::resetBus()
     init(m_speed);
 }
 
-bool I2C::isDmaBusy()
+bool I2C::isBusy()
 {
-    return m_busyDMA.load();
+    return m_busyDMA.load(etl::memory_order_relaxed);
 }
 
 void I2C::run(uint8_t, uint32_t)
@@ -417,14 +417,18 @@ void I2C::run(uint8_t, uint32_t)
     {
         SET_BIT(m_i2c->ICR, I2C_ISR_STOPF);   // Reset the Stop flag
         CLEAR_BIT(m_i2c->CR1, I2C_CR1_TXIE | I2C_CR1_RXIE | I2C_CR1_ERRIE | I2C_CR1_TCIE | I2C_CR1_STOPIE | I2C_CR1_NACKIE);
-        m_busyDMA.store(false);
+        if (m_currentBuf)
+            m_currentBuf->invalidate();
+        m_busyDMA.store(false, etl::memory_order_release);
+        m_currentBuf = nullptr;
         m_XferComplete.activ(m_currentSlaveAddr);
     }
 }
 
-bool I2C::readRegViaDMA(uint16_t devAddr, uint8_t* regAddr, uint8_t regAddrSize, uint8_t *dest, uint32_t destSize)
+bool I2C::readRegViaDMA(uint16_t devAddr, uint8_t* regAddr, uint8_t regAddrSize, i_face::I_DmaBuffer& dest, size_t readSize, size_t bufferOffset)
 {
-    if (!dest || destSize == 0 || m_busyDMA.load())
+    m_currentBuf = nullptr;
+    if (m_busyDMA.load(etl::memory_order_relaxed))
         return false;
 
     if (regAddrSize != sizeof(uint8_t) && regAddrSize != sizeof(uint16_t))
@@ -433,9 +437,9 @@ bool I2C::readRegViaDMA(uint16_t devAddr, uint8_t* regAddr, uint8_t regAddrSize,
     // 1. Collect the new transaction info:
     m_16bitRegAddrMode = (regAddrSize == sizeof(uint16_t));
     memcpy(m_currentRegAddr, regAddr, regAddrSize);
-    m_currentDestAddr = dest;
+    m_currentDestAddr = reinterpret_cast<uint8_t*>(dest.getAddr()) + bufferOffset;
     m_currentSlaveAddr = devAddr;
-    m_totalXferSize = destSize;
+    m_totalXferSize = readSize;
     if (m_totalXferSize > m_MaxNbytesSize)
     {
         m_currentXferSize = m_MaxNbytesSize;
@@ -451,13 +455,15 @@ bool I2C::readRegViaDMA(uint16_t devAddr, uint8_t* regAddr, uint8_t regAddrSize,
     m_i2c->TXDR = m_16bitRegAddrMode ? m_currentRegAddr[1] : m_currentRegAddr[0];
 
     // 3. Prepare the DMA Rx transaction
+    m_currentBuf = &dest;
+    dest.invalidate();
     if (!m_dmaTransceiver.dmaRxRequest(m_currentDestAddr, m_currentXferSize))
         return false;
 
-    m_busyDMA.store(true);
+    m_busyDMA.store(true, etl::memory_order_release);
     m_totalXferSize -= m_currentXferSize;   // Calculate the next xfer size
 
-    // 4. Setup the general (none-DMA trensmitting)
+    // 4. Setup the general (PIO) transmitting
     I2C::TransferConf conf {0};
     conf.SAddr = devAddr;           // Slave address
     conf.NBytes = regAddrSize;      // Bytesize of register address (one or two)
@@ -468,19 +474,25 @@ bool I2C::readRegViaDMA(uint16_t devAddr, uint8_t* regAddr, uint8_t regAddrSize,
     conf.Reload = false;            // Only NBytes (not more)
     transConfig(conf);              // Set config
 
-    // 5. Enable interruptions for general transmitting:
+    // 5. Enable interruptions for PIO transmitting:
     SET_BIT(m_i2c->CR1, I2C_CR1_TXIE | I2C_CR1_ERRIE | I2C_CR1_TCIE | I2C_CR1_STOPIE | I2C_CR1_NACKIE);
     return true;
 }
 
-bool I2C::readRegViaDMA_8bitAddr(uint16_t devAddr, uint8_t regAddr, uint8_t *dest, uint32_t destSize)
+bool I2C::read8bReg_DMA(uint16_t devAddr, uint8_t regAddr, i_face::I_DmaBuffer& dest, size_t readSize, size_t bufferOffset)
 {
-    return readRegViaDMA(devAddr, (uint8_t*)&regAddr, sizeof(uint8_t), dest, destSize);
+    if (readSize == 0 || (readSize + bufferOffset) > dest.getSize())
+        return false; // Reading size failed!
+
+    return readRegViaDMA(devAddr, (uint8_t*)&regAddr, sizeof(uint8_t), dest, readSize, bufferOffset);
 }
 
-bool I2C::readRegViaDMA_16bitAddr(uint16_t devAddr, uint16_t regAddr, uint8_t *dest, uint32_t destSize)
+bool I2C::read16bReg_DMA(uint16_t devAddr, uint16_t regAddr, i_face::I_DmaBuffer& dest, size_t readSize, size_t bufferOffset)
 {
-    return readRegViaDMA(devAddr, (uint8_t*)&regAddr, sizeof(uint16_t), dest, destSize);
+    if (readSize == 0 || (readSize + bufferOffset) > dest.getSize())
+        return false; // Reading size failed!
+
+    return readRegViaDMA(devAddr, (uint8_t*)&regAddr, sizeof(uint16_t), dest, readSize, bufferOffset);
 }
 
 }   // namespace driver

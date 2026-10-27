@@ -18,8 +18,7 @@ Bus::Bus(FDCAN_GlobalTypeDef* can) :
     m_ExtFiltersAddr(messageRamAddr + (m_ExtFiltersOffset * sizeof(uint32_t)) + (m_canNumber * m_ExtFiltersMaxCount * m_ExtFilterWordSize * sizeof(uint32_t))),
     m_RxFifoAddr(messageRamAddr + (m_RxFifoOffset * sizeof(uint32_t)) + (m_canNumber * m_RxFifoPacksCount * m_FifoPackWordSize * sizeof(uint32_t))),
     m_TxFifoAddr(messageRamAddr + (m_TxFifoOffset * sizeof(uint32_t)) + (m_canNumber * m_TxFifoPacksCount * m_FifoPackWordSize * sizeof(uint32_t))),
-    receiver(can, m_RxFifoAddr),
-    m_txBuffer(256)
+    receiver(can, m_RxFifoAddr)
 {
     int a = 0;
     a++;
@@ -102,8 +101,8 @@ void Bus::init(Config config)
     WRITE_REG(m_can->GFC, FDCAN_GFC_ANFS | FDCAN_GFC_ANFE);     // Reject frames non-matching with any filter
     CLEAR_BIT (m_can->CCCR, FDCAN_CCCR_FDOE | FDCAN_CCCR_BRSE); // Disable FD and bitrate switching (Clear by default!)
     uint32_t tmpConfig = m_can->CCCR;
-    MODIFY_REG(tmpConfig, FDCAN_CCCR_DAR_Msk, (m_config.oneShotMode ? 1 : 0) << FDCAN_CCCR_DAR_Pos);    // One-shot mode
-    MODIFY_REG(tmpConfig, FDCAN_CCCR_MON_Msk, (m_config.listenOnlyMode ? 1 : 0) << FDCAN_CCCR_MON_Pos); // Silent mode TODO: CHECK!!!
+    MODIFY_REG(tmpConfig, FDCAN_CCCR_DAR_Msk, (m_config.oneShotMode ? 1U : 0U) << FDCAN_CCCR_DAR_Pos);    // One-shot mode
+    MODIFY_REG(tmpConfig, FDCAN_CCCR_MON_Msk, (m_config.listenOnlyMode ? 1U : 0U) << FDCAN_CCCR_MON_Pos); // Silent mode TODO: CHECK!!!
     WRITE_REG(m_can->CCCR, tmpConfig);
 
     // Finishing initialization:
@@ -161,7 +160,7 @@ void Bus::run(Message* msg, uint32_t)
 
 void Bus::send(Message &msg)
 {
-    if (!m_txBuffer.write(msg))
+    if (!m_txBuffer.push(msg))
         Log(lmSystem, Error) << "CAN_" << (m_canNumber ? "2" : "1") << ": Tx buffer overloaded";
     txFromBufferToCan();
 }
@@ -175,7 +174,7 @@ void Bus::txFromBufferToCan()
     const uint8_t extIdBitPos = 30;     // Extended ID flag position
     const uint8_t dlcBitPos = 16;       // Data Length Code position
     
-    while (!READ_BIT(m_can->TXFQS, FDCAN_TXFQS_TFQF) && m_txBuffer.read(msg))
+    while (!READ_BIT(m_can->TXFQS, FDCAN_TXFQS_TFQF) && m_txBuffer.pop(msg))
     {
         msg.id &= extIdMask;
         volatile uint8_t tx_index = (m_can->TXFQS & FDCAN_TXFQS_TFQPI_Msk) >> FDCAN_TXFQS_TFQPI_Pos;

@@ -28,21 +28,30 @@ class Pin : public SlotInterface <bool>, public Contact
 {
 private:
     friend class Exti;
-    const GpioPort m_GPIOx;     // Port (GPIOA, GPIOB...)  
+    const GpioPort m_GPIOx;     // Port (GPIOA, GPIOB...)
     const uint8_t m_pin;        // Pin number
     const uint32_t m_pinPos;    // Pin mask (1 << pin)
     ExtiFront m_extiFront;      // Detecting front for EXTI interruptions
     Exti m_exti;                // External interruptions slot
+
     /**
      * @brief Pin control signal handler
      * @param [in] pinOn on/off
-     */ 
+     */
     void run(bool pinOn, uint32_t) override;
+
+    /**
+     * @brief Pin registration for avoiding doubled initialization
+     * @details For pinConfigDiagnostic() function
+     * @param [in] port Port (GPIOA, GPIOB..)
+     * @param [in] pin Pin number
+     */ 
+    static void registerPin(GPIO_TypeDef* port, uint8_t pin);
 
 public:
     /**
      * @brief Pin configurating
-     * @param [in] _GPIOx      Port (GPIOA, GPIOB и т.д.)
+     * @param [in] _GPIOx      Port (GPIOA, GPIOB..)
      * @param [in] _pin        Pin number
      * @param [in] _type       Pin type
      * @param [in] _pull       Pulling

@@ -13,6 +13,7 @@ private:
     NvicManager() {};
     NvicManager(NvicManager&) = delete;
     
+    Nvic m_timer_nvics[4];  // General Purpose Timers (2..5) nvics instances
     Nvic m_uart_nvics[8];   // USART/UART nvics instances
     Nvic m_spi_nvics[6];    // SPI nvics instances
     Nvic m_gpio_nvics[7];   // GPIO EXTI nvics instances
@@ -31,6 +32,13 @@ public:
      * @return Result. True = Ok
      */
     bool getIrqNumber(uint32_t addr, IRQn_Type& irq);
+
+     /**
+     * @brief Get pointer to GENERAL PURPOSE TIMERS (2..5) Nvic
+     * @param [in] timer Periphery device
+     * @return pointer to Nvic or nullptr if failed 
+     */
+    Nvic* getTimerNvic(const TIM_TypeDef* timer);
 
     /**
      * @brief Get pointer to Uart Nvic
@@ -53,6 +61,11 @@ public:
      */
     Nvic* getCanNvic(const volatile FDCAN_GlobalTypeDef* can);
 
+    /**
+     * @brief Get pointer to I2C Nvic
+     * @param [in] i2c Periphery device
+     * @return pointer to Nvic or nullptr if failed 
+     */
     Nvic* getI2CNvic(const I2C_TypeDef* i2c);
 
     /**

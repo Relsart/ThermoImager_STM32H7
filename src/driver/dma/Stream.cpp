@@ -36,7 +36,7 @@ Stream::Stream() : m_stream(Manager::getInstance().getStream())
     // ISR/IFCR bits positions and mask Identification for current stream: 
     uint8_t bitsPos[4] = {0, 6, 16, 22};
     uint8_t index = (streamNumber < 4) ? streamNumber : (streamNumber - 4);
-    m_irPos.mask = 0x3D << bitsPos[index];
+    m_irPos.mask = 0x3DU << bitsPos[index];
     m_irPos.tcif = bitsPos[index] + 5;
     m_irPos.htif = bitsPos[index] + 4;
     m_irPos.teif = bitsPos[index] + 3;
@@ -46,17 +46,16 @@ Stream::Stream() : m_stream(Manager::getInstance().getStream())
     nvic = NvicManager::getInstance().getDmaNvic(m_stream);
 }
 
-
 void Stream::run(Irq, uint32_t)
 {
     // Transfer Complete Interruption:
-    if ((READ_BIT(*m_isr, 1 << m_irPos.tcif)) && (READ_BIT(m_stream->CR, DMA_SxCR_TCIE)))
+    if ((READ_BIT(*m_isr, 1U << m_irPos.tcif)) && (READ_BIT(m_stream->CR, DMA_SxCR_TCIE)))
     {
-        SET_BIT(*m_ifcr, (1 << m_irPos.tcif));       // Reset interrruption
+        SET_BIT(*m_ifcr, (1U << m_irPos.tcif));      // Reset interrruption
         if (!READ_BIT(m_stream->CR, DMA_SxCR_CIRC))  // If no Circle mode
         {
             CLEAR_BIT(m_stream->CR, DMA_SxCR_TCIE);  // Disable interruption
-            m_busy.store(false);                    // Mark stream as released
+            m_busy.store(false, etl::memory_order_release);                     // Mark stream as released
         }
 
         if (m_transComplete.isConnected())
@@ -76,23 +75,22 @@ void Stream::run(Irq, uint32_t)
     }
 
     // Half transfer complete interruption (has not made complete yet):
-    if ((READ_BIT(*m_isr, 1 << m_irPos.htif)) && (READ_BIT(m_stream->CR, DMA_SxCR_HTIE)))
+    if ((READ_BIT(*m_isr, 1U << m_irPos.htif)) && (READ_BIT(m_stream->CR, DMA_SxCR_HTIE)))
     {
         // Reset and disable:
-        SET_BIT(*m_ifcr, 1 << m_irPos.htif);
+        SET_BIT(*m_ifcr, 1U << m_irPos.htif);
         CLEAR_BIT (m_stream->CR, DMA_SxCR_HTIE);
     }
 
     // Transfer Error Interruption (common yet):
-    if (READ_BIT (*m_isr, (1 << m_irPos.teif) | (1 << m_irPos.dmeif) | (1 << m_irPos.feif)))
+    if (READ_BIT (*m_isr, (1U << m_irPos.teif) | (1U << m_irPos.dmeif) | (1U << m_irPos.feif)))
     {
         // Reset and disable:
-        SET_BIT(*m_ifcr, (1 << m_irPos.teif) | (1 << m_irPos.dmeif) | (1 << m_irPos.feif));
+        SET_BIT(*m_ifcr, (1U << m_irPos.teif) | (1U << m_irPos.dmeif) | (1U << m_irPos.feif));
         CLEAR_BIT (m_stream->CR, DMA_SxCR_DMEIE | DMA_SxCR_TEIE);
         CLEAR_BIT (m_stream->FCR, DMA_SxFCR_FEIE);
     }
 }
-
 
 void Stream::transferData (uint32_t memaddr1, uint32_t memaddr2, uint16_t dataSize, uint8_t unitSize, bool memInc)
 {
@@ -128,13 +126,13 @@ void Stream::transferData (uint32_t memaddr1, uint32_t memaddr2, uint16_t dataSi
     }
 
     MODIFY_REG(m_stream->CR, 0x1E, DMA_SxCR_TCIE | DMA_SxCR_TEIE);  // Enable interruptions (transfer complete & errors)
-    m_busy.store(true);
+    m_busy.store(true, etl::memory_order_release);
     SET_BIT (m_stream->CR, DMA_SxCR_EN);  // Stream enable
 }
 
-
 bool Stream::configurate(const StreamConfig* config)
 {
+    m_initOk = false;
     if (!m_stream || !config)
         return false;   // No available
 
@@ -196,7 +194,7 @@ bool Stream::configurate(const StreamConfig* config)
     nvic->enable(); // Enable interruptions and finish initialization
     m_initOk = true;
     m_errorFlag = false; 
-    m_busy.store(false);
+    m_busy.store(false, etl::memory_order_release);
     return true;
 }
 
@@ -287,162 +285,158 @@ void Stream::stopStream()
             return;     
         }
     }
-    SET_BIT(DMAMUX1_ChannelStatus->CFR, 1 << m_muxNumber);    // DMAMUX synchro overrun flag reset
+    SET_BIT(DMAMUX1_ChannelStatus->CFR, 1U << m_muxNumber);   // DMAMUX synchro overrun flag reset
     SET_BIT(*m_ifcr, m_irPos.mask);                           // Stream interruptions flags reset
-    m_busy.store(false);                                     // Release stream
+    m_busy.store(false, etl::memory_order_release);           // Release stream
 }
-
 
 bool Stream::setPeriphAddr(MuxRequestIDs requestId)
 {
-    uint32_t periphAddr = 0;
-    Direction direction;
-
     switch (requestId)
     {
     case MuxRequestIDs::MemToMem:
-        direction = Direction::Mem2Mem;
+        m_direction = Direction::Mem2Mem;
         break;
     case MuxRequestIDs::Usart1RX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&USART1->RDR);
-        direction = Direction::Periph2Mem;
+        m_direction = Direction::Periph2Mem;
         break;
     case MuxRequestIDs::Usart1TX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&USART1->TDR);
-        direction = Direction::Mem2Periph;
+        m_direction = Direction::Mem2Periph;
         break;
     case MuxRequestIDs::Usart2RX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&USART2->RDR);
-        direction = Direction::Periph2Mem;
+        m_direction = Direction::Periph2Mem;
         break;
     case MuxRequestIDs::Usart2TX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&USART2->TDR);
-        direction = Direction::Mem2Periph;
+        m_direction = Direction::Mem2Periph;
         break;
     case MuxRequestIDs::Usart3RX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&USART3->RDR);
-        direction = Direction::Periph2Mem;
+        m_direction = Direction::Periph2Mem;
         break;
     case MuxRequestIDs::Usart3TX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&USART3->TDR);
-        direction = Direction::Mem2Periph;
+        m_direction = Direction::Mem2Periph;
         break;
     case MuxRequestIDs::Uart4RX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&UART4->RDR);
-        direction = Direction::Periph2Mem;
+        m_direction = Direction::Periph2Mem;
         break;
     case MuxRequestIDs::Uart4TX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&UART4->TDR);
-        direction = Direction::Mem2Periph;
+        m_direction = Direction::Mem2Periph;
         break;
     case MuxRequestIDs::Uart5RX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&UART5->RDR);
-        direction = Direction::Periph2Mem;
+        m_direction = Direction::Periph2Mem;
         break;
     case MuxRequestIDs::Uart5TX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&UART5->TDR);
-        direction = Direction::Mem2Periph;
+        m_direction = Direction::Mem2Periph;
         break;
     case MuxRequestIDs::Usart6RX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&USART6->RDR);
-        direction = Direction::Periph2Mem;
+        m_direction = Direction::Periph2Mem;
         break;
     case MuxRequestIDs::Usart6TX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&USART6->TDR);
-        direction = Direction::Mem2Periph;
+        m_direction = Direction::Mem2Periph;
         break;
     case MuxRequestIDs::Uart7RX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&UART7->RDR);
-        direction = Direction::Periph2Mem;
+        m_direction = Direction::Periph2Mem;
         break;
     case MuxRequestIDs::Uart7TX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&UART7->TDR);
-        direction = Direction::Mem2Periph;
+        m_direction = Direction::Mem2Periph;
         break;
     case MuxRequestIDs::Uart8RX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&UART8->RDR);
-        direction = Direction::Periph2Mem;
+        m_direction = Direction::Periph2Mem;
         break;
     case MuxRequestIDs::Uart8TX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&UART8->TDR);
-        direction = Direction::Mem2Periph;
+        m_direction = Direction::Mem2Periph;
         break;
     case MuxRequestIDs::Spi1RX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&SPI1->RXDR);
-        direction = Direction::Periph2Mem;
+        m_direction = Direction::Periph2Mem;
         break;
     case MuxRequestIDs::Spi1TX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&SPI1->TXDR);
-        direction = Direction::Mem2Periph;
+        m_direction = Direction::Mem2Periph;
         break;
     case MuxRequestIDs::Spi2RX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&SPI2->RXDR);
-        direction = Direction::Periph2Mem;
+        m_direction = Direction::Periph2Mem;
         break;
     case MuxRequestIDs::Spi2TX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&SPI2->TXDR);
-        direction = Direction::Mem2Periph;
+        m_direction = Direction::Mem2Periph;
         break;
     case MuxRequestIDs::Spi3RX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&SPI3->RXDR);
-        direction = Direction::Periph2Mem;
+        m_direction = Direction::Periph2Mem;
         break;
     case MuxRequestIDs::Spi3TX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&SPI3->TXDR);
-        direction = Direction::Mem2Periph;
+        m_direction = Direction::Mem2Periph;
         break;
     case MuxRequestIDs::Spi4RX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&SPI4->RXDR);
-        direction = Direction::Periph2Mem;
+        m_direction = Direction::Periph2Mem;
         break;
     case MuxRequestIDs::Spi4TX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&SPI4->TXDR);
-        direction = Direction::Mem2Periph;
+        m_direction = Direction::Mem2Periph;
         break;
     case MuxRequestIDs::Spi5RX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&SPI5->RXDR);
-        direction = Direction::Periph2Mem;
+        m_direction = Direction::Periph2Mem;
         break;
     case MuxRequestIDs::Spi5TX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&SPI5->TXDR);
-        direction = Direction::Mem2Periph;
+        m_direction = Direction::Mem2Periph;
         break;
     case MuxRequestIDs::I2c1RX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&I2C1->RXDR);
-        direction = Direction::Periph2Mem;
+        m_direction = Direction::Periph2Mem;
         break;
     case MuxRequestIDs::I2c1TX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&I2C1->TXDR);
-        direction = Direction::Mem2Periph;
+        m_direction = Direction::Mem2Periph;
         break;
     case MuxRequestIDs::I2c2RX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&I2C2->RXDR);
-        direction = Direction::Periph2Mem;
+        m_direction = Direction::Periph2Mem;
         break;
     case MuxRequestIDs::I2c2TX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&I2C2->TXDR);
-        direction = Direction::Mem2Periph;
+        m_direction = Direction::Mem2Periph;
         break;
     case MuxRequestIDs::I2c3RX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&I2C3->RXDR);
-        direction = Direction::Periph2Mem;
+        m_direction = Direction::Periph2Mem;
         break;
     case MuxRequestIDs::I2c3TX:
         m_stream->PAR = reinterpret_cast<uint32_t>(&I2C3->TXDR);
-        direction = Direction::Mem2Periph;
+        m_direction = Direction::Mem2Periph;
         break;
     default:
         return false;
     }
 
-    SET_BIT (m_stream->CR, static_cast<uint8_t>(direction) << DMA_SxCR_DIR_Pos);
+    SET_BIT (m_stream->CR, static_cast<uint8_t>(m_direction) << DMA_SxCR_DIR_Pos);
     m_mux->CCR = static_cast<uint8_t>(m_config.request);
     return true;
 }
 
 bool Stream::periphTransfer(void* memAddr, uint16_t dataSize, uint8_t incSize, bool memInc)
 {
-    if (dataSize == 0 || !m_initOk || m_errorFlag || m_busy.load())
+    if (dataSize == 0 || !m_initOk || m_errorFlag || m_busy.load(etl::memory_order_relaxed))
         return false;     // Stream not ready
 
     if (READ_BIT(m_stream->CR, DMA_SxCR_DBM))
@@ -460,7 +454,7 @@ bool Stream::periphTransfer(void* memAddr, uint16_t dataSize, uint8_t incSize, b
 
 bool Stream::periphTransfer(void* memBuff1, void* memBuff2, uint16_t dataSize, uint8_t incSize)
 {
-    if (dataSize == 0 || !m_initOk || m_errorFlag || m_busy.load())
+    if (dataSize == 0 || !m_initOk || m_errorFlag || m_busy.load(etl::memory_order_relaxed))
         return false;     // Stream not ready
 
     if (!READ_BIT(m_stream->CR, DMA_SxCR_DBM))
@@ -493,7 +487,7 @@ bool Stream::mem2memTransfer(uint8_t* sourceAddr, uint8_t* destAddr, uint16_t da
 
 bool Stream::mem2memTransfer(uint16_t* sourceAddr, uint8_t* destAddr, uint16_t dataSize)
 {
-    if (dataSize == 0 || !m_initOk || m_errorFlag || m_busy.load())
+    if (dataSize == 0 || !m_initOk || m_errorFlag || m_busy.load(etl::memory_order_relaxed))
         return false;     // Stream not ready
 
     if ((m_mux->CCR & 0x7F) != static_cast<uint32_t>(MuxRequestIDs::MemToMem))
@@ -508,7 +502,7 @@ bool Stream::mem2memTransfer(uint16_t* sourceAddr, uint8_t* destAddr, uint16_t d
 
 bool Stream::mem2memTransfer(uint32_t* sourceAddr, uint8_t* destAddr, uint16_t dataSize)
 {
-    if (dataSize == 0 || !m_initOk || m_errorFlag || m_busy.load())
+    if (dataSize == 0 || !m_initOk || m_errorFlag || m_busy.load(etl::memory_order_relaxed))
         return false;     // Stream not ready
 
     if ((m_mux->CCR & 0x7F) != static_cast<uint32_t>(MuxRequestIDs::MemToMem))
@@ -528,7 +522,7 @@ bool Stream::isInitialised()
 
 bool Stream::isBusy()
 {
-    return m_busy.load();
+    return m_busy.load(etl::memory_order_relaxed);
 }
 
 bool Stream::isErrorState()

@@ -53,6 +53,7 @@ public:
     dma::Stream spiStream;
     
     // Communication ports and interfaces:
+    RingBuffer<128> consoleRB;
     uart::Port console;
     spi::Spi screenSpi;
     I2C i2cPort;

@@ -16,8 +16,8 @@ uint8_t getcrc8 (const uint8_t*data, uint32_t size, uint32_t init, uint32_t poly
         return 0;
 
     WRITE_REG (CRC->CR, CRC_CR_POLYSIZE_1 | 
-                        ((config & CRC_CONFIG_REVIN)? CRC_CR_REV_IN_0 : (0 << CRC_CR_REV_IN_Pos)) | 
-                        ((config & CRC_CONFIG_REVOUT)? CRC_CR_REV_OUT : (0 << CRC_CR_REV_OUT_Pos)));
+                        ((config & CRC_CONFIG_REVIN)? CRC_CR_REV_IN_0 : (0U << CRC_CR_REV_IN_Pos)) | 
+                        ((config & CRC_CONFIG_REVOUT)? CRC_CR_REV_OUT : (0U << CRC_CR_REV_OUT_Pos)));
     
     if (config & CRC_CONFIG_RESET)
     {
@@ -40,8 +40,8 @@ uint16_t getcrc16 (const uint8_t*data, uint32_t size, uint32_t init, uint32_t po
         return 0;
     
     WRITE_REG (CRC->CR, CRC_CR_POLYSIZE_0 | 
-                        ((config & CRC_CONFIG_REVIN)? CRC_CR_REV_IN_0 : (0 << CRC_CR_REV_IN_Pos)) |  
-                        ((config & CRC_CONFIG_REVOUT)? CRC_CR_REV_OUT : (0 << CRC_CR_REV_OUT_Pos))); 
+                        ((config & CRC_CONFIG_REVIN)? CRC_CR_REV_IN_0 : (0U << CRC_CR_REV_IN_Pos)) |  
+                        ((config & CRC_CONFIG_REVOUT)? CRC_CR_REV_OUT : (0U << CRC_CR_REV_OUT_Pos))); 
    
     if (config & CRC_CONFIG_RESET)
     {
@@ -63,8 +63,8 @@ uint32_t getcrc32 (const uint32_t*data, uint32_t size, uint32_t init, uint32_t p
     if ((!data) || (!size))
         return 0;
 
-    WRITE_REG (CRC->CR, ((config & CRC_CONFIG_REVIN)? CRC_CR_REV_IN_0 : (0 << CRC_CR_REV_IN_Pos)) | 
-                        ((config & CRC_CONFIG_REVOUT)? CRC_CR_REV_OUT : (0 << CRC_CR_REV_OUT_Pos))); 
+    WRITE_REG (CRC->CR, ((config & CRC_CONFIG_REVIN)? CRC_CR_REV_IN_0 : (0U << CRC_CR_REV_IN_Pos)) | 
+                        ((config & CRC_CONFIG_REVOUT)? CRC_CR_REV_OUT : (0U << CRC_CR_REV_OUT_Pos))); 
    
     if (config & CRC_CONFIG_RESET)
     {

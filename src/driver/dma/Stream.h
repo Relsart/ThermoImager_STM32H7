@@ -8,6 +8,7 @@
 #include "DataTypes.h"
 #include "Signal.h"
 #include "Dma.h"
+#include "Buffer.h"
 
 namespace driver {
 namespace dma {
@@ -18,17 +19,17 @@ class Stream : public SlotInterface<Irq>
 {
 private:
     __IO DMA_Stream_TypeDef* const m_stream;    // Stream periphery pointer
-    uint32_t* m_ifcr;                       // Clearing interruption flags register (LIFCR or HIFCR: depending on the stream number)
-    uint32_t* m_isr;                        // Interruption state register (LISR or HISR: depending on the stream number)
-    DMAMUX_Channel_TypeDef* m_mux;          // DMA Multiplexor channnel
-    uint8_t m_muxNumber;                    // DMAMUX channel number (0...15)
-    StreamConfig m_config;                  // Saved configuration
-    Signal<SignalPack> m_transComplete;     // Signal of transfer data complete
-    uint16_t m_dataSize = 0;                // Size of exchanged data (saved from transfer request)
-
-    etl::atomic<bool> m_busy{false};        // Busy stream flag
-    bool m_initOk = false;                  // Stream initialised flag
-    bool m_errorFlag = false;               // Stream error-state flag
+    uint32_t* m_ifcr;                           // Clearing interruption flags register (LIFCR or HIFCR: depending on the stream number)
+    uint32_t* m_isr;                            // Interruption state register (LISR or HISR: depending on the stream number)
+    DMAMUX_Channel_TypeDef* m_mux;              // DMA Multiplexor channnel
+    uint8_t m_muxNumber;                        // DMAMUX channel number (0...15)
+    StreamConfig m_config;                      // Saved configuration
+    Signal<SignalPack> m_transComplete;         // Signal of transfer data complete
+    uint16_t m_dataSize = 0;                    // Size of exchanged data (saved from transfer request)
+    Direction m_direction;                      // Stream direction (mem2per, per2mem, mem2mem)
+    etl::atomic<bool> m_busy{false};            // Busy stream flag
+    bool m_initOk = false;                      // Stream initialised flag
+    bool m_errorFlag = false;                   // Stream error-state flag
 
     /**
      * @brief Bits positions for ISR/IFCR registers
@@ -61,7 +62,7 @@ private:
      * @param [in] unitSize Size of data unit (1/2/4 bytes)
      * @param [in] memInc If false: disabling memory increment- for sending the same data several times
      */
-    void transferData (uint32_t memaddr1, uint32_t memaddr2, uint16_t dataSize, uint8_t unitSize, bool memInc = true);
+    void transferData(uint32_t memaddr1, uint32_t memaddr2, uint16_t dataSize, uint8_t unitSize, bool memInc = true);
 
     /**
      * @brief FIFO parameters checking for correctness
@@ -75,6 +76,7 @@ private:
      * @param [in] addr Address
      * @return True = Ok
      */
+    /* * * * * * * Will be DEPRECATED! (implemented in DMA Buffer class) * * * * * *  */
     bool checkMemAddr(uint32_t addr);
 
     /**
@@ -110,7 +112,7 @@ public:
     bool reInit();
 
     /**
-     * @brief Data transaction between memory and periphery (for General or Circular Single-Buffered mode)
+     * @brief Data transaction between memory and periphery (for General Single-Buffered mode)
      * @details Periphery address and transfer direction has allready set in configurate method
      * @param [in] memAddr Memory address
      * @param [in] dataSize size of data (in units of increment)
