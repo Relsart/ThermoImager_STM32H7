@@ -8,6 +8,10 @@
 namespace driver {
 namespace dma {
 
+/**
+ * @brief Memory Buffer for any DMA operations
+ * @tparam Size of buffer in bytes. Must be a multiple of 32 bytes (Cache Line aligning)!
+ */
 template <size_t BufferSize>
 class Buffer : public i_face::I_DmaBuffer
 {
@@ -57,38 +61,51 @@ public:
 
     /**
      * @brief Get buffer address 
-     * @details For SCB_InvalidateDCache_by_Addr() or SCB_CleanDCache_by_Addr() functions
      */
-    uint32_t* getAddr() override
+    void* getAddr() override
     { 
         return reinterpret_cast<uint32_t*>(m_buffer); 
     }
-    const uint32_t* getAddr() const override
+    const void* getAddr() const override
     {
         return reinterpret_cast<const uint32_t*>(m_buffer); 
     }
 
+    /**
+     * @brief Get buffer address (in bytes)
+     */
     size_t getSize() const override
     { 
         return BufferSize;
     }
 
+    /**
+     * @brief Overloaded operator for easy access to buffer bytes
+     */
     uint8_t& operator[](size_t index) override
     {
         return m_buffer[index];
     }
-    
     const uint8_t& operator[](size_t index) const override
     {
         return m_buffer[index];
     }
 
+    /**
+     * @brief Cleans the D-Cache, it means WRITES any changes from the cache to SRAM
+     * @details Necessary BEFORE WRITING Memory -> to Periphery
+     * @note Safely, even if D-Cache is disabled
+     */
     void clean() const override
     {
         auto cacheAddr = reinterpret_cast<uint32_t*>(const_cast<uint8_t*>(m_buffer));
         SCB_CleanDCache_by_Addr(cacheAddr, BufferSize);
     }
 
+    /**
+     * @brief Defines data in cache area as in illiquid, so CPU must read them straight from the SRAM
+     * @details Necessary AFTER READING Periphery -> to Memory
+     */
     void invalidate() override
     {
         if ((SCB->CCR & SCB_CCR_DC_Msk) != 0U)
