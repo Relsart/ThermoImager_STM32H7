@@ -18,8 +18,8 @@ class I_DmaBuffer
 public:
     virtual ~I_DmaBuffer() = default;    // Interface virtual destructor
 
-    virtual uint32_t* getAddr() = 0;
-    virtual const uint32_t* getAddr() const = 0;
+    virtual void* getAddr() = 0;
+    virtual const void* getAddr() const = 0;
     virtual size_t getSize() const = 0;
     virtual uint8_t& operator[](size_t index) = 0;
     virtual const uint8_t& operator[](size_t index) const = 0;
