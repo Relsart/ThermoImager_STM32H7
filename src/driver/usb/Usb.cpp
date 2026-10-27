@@ -61,7 +61,7 @@ bool Device::flushFifo(FifoType fifoType, uint8_t number)
             return false;
     }
 
-    m_Usb->GRSTCTL = fifoType == FifoType::RX ? USB_OTG_GRSTCTL_RXFFLSH : (USB_OTG_GRSTCTL_TXFFLSH | number << 6);
+    m_Usb->GRSTCTL = fifoType == FifoType::RX ? USB_OTG_GRSTCTL_RXFFLSH : (USB_OTG_GRSTCTL_TXFFLSH | number << 6U);
     param = driver::DwtTimer::getInstance().timeoutInit(m_UsbTimeoutMs);
     while (READ_BIT(m_Usb->GRSTCTL, flushCmdMsk))
     {
@@ -92,17 +92,17 @@ void Device::setTxFifo(uint8_t fifoNumber, uint16_t size)
     uint32_t txOffset = m_Usb->GRXFSIZ;
     if (fifoNumber == 0U)
     {
-        m_Usb->DIEPTXF0_HNPTXFSIZ = ((uint32_t)size << 16) | txOffset;
+        m_Usb->DIEPTXF0_HNPTXFSIZ = ((uint32_t)size << 16U) | txOffset;
     }
     else
     {
-        txOffset += (m_Usb->DIEPTXF0_HNPTXFSIZ) >> 16;
+        txOffset += (m_Usb->DIEPTXF0_HNPTXFSIZ) >> 16U;
         for (int i = 0; i < (fifoNumber - 1); i++)
         {
-            txOffset += (m_Usb->DIEPTXF[i] >> 16);
+            txOffset += (m_Usb->DIEPTXF[i] >> 16U);
         }
         /* Multiply Tx_Size by 2 to get higher performance */
-        m_Usb->DIEPTXF[fifoNumber - 1] = ((uint32_t)size << 16) | txOffset;
+        m_Usb->DIEPTXF[fifoNumber - 1] = ((uint32_t)size << 16U) | txOffset;
     }
 }
 

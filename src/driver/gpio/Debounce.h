@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <etl/atomic.h>
 #include "DataTypes.h"
 
 namespace driver {
@@ -7,17 +8,18 @@ namespace gpio {
 
 /**
  * @brief Debounce for electrical contact input
+ * @details Based on integral filter (reversible counter)
  */
 class Contact
 {
 private:
-    const GpioPort m_GPIOx;           // Port (GPIOA, GPIOB...)  
-    const uint32_t m_pinPos;          // Pin mask (1 << pin)
-    uint32_t m_filterSetpoint = 200;  // Switching setpoint for filter
-    uint32_t m_filterCounter = 100;   // Filter counter
-    bool m_flagLow = false;           // low-lewel flag
-    bool m_flagRising = false;        // Rising front trigger flag
-    bool m_flagFalling = false;       // Falling front trigger flag
+    const GpioPort m_GPIOx;             // Port (GPIOA, GPIOB...)  
+    const uint32_t m_pinPos;            // Pin mask (1 << pin)
+    const uint32_t m_FilterSetpoint;    // Switching setpoint for filter
+    uint32_t m_filterCounter;           // The integrator ranges from 0 (pure LOW) to m_filterSetpoint (pure HIGH), starts strictly from the middle
+    bool m_debouncedState = false;      // Current (filtered) pin state
+    etl::atomic<bool> m_flagRising;     // Rising front trigger flag
+    etl::atomic<bool> m_flagFalling;    // Falling front trigger flag
 
 public:
     /**
@@ -29,7 +31,7 @@ public:
      * @brief Scan pin state and calculate debounced value
      * @details Invoked periodical, in main loop, timer handler or somewhere else
      */
-    void debounceScan();
+    void scan();
 
     /**
      * @brief Get rising-front (falling-front) trigger values

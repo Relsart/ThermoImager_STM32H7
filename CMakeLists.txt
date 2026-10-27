@@ -29,6 +29,7 @@ endif()
 
 include_directories(.)
 include_directories(src)
+include_directories(src/interface)
 include_directories(src/libs)
 include_directories(src/thirdParty)
 include_directories(src/modules/include)

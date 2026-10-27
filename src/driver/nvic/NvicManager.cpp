@@ -96,6 +96,18 @@ Nvic* NvicManager::getUartNvic(const USART_TypeDef* uart)
     return nullptr;
 }
 
+Nvic* NvicManager::getTimerNvic(const TIM_TypeDef* timer)
+{
+    switch (reinterpret_cast<uint32_t>(timer))
+    {
+    case TIM2_BASE:   return &m_timer_nvics[0];
+    case TIM3_BASE:   return &m_timer_nvics[1];
+    case TIM4_BASE:   return &m_timer_nvics[2];
+    case TIM5_BASE:   return &m_timer_nvics[3];
+    }
+    return nullptr;
+}
+
 Nvic* NvicManager::getSpiNvic(const SPI_TypeDef* spi)
 {
     switch (reinterpret_cast<uint32_t>(spi))

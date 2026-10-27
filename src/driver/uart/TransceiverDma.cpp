@@ -69,16 +69,15 @@ void DmaTransceiver::run(dma::SignalPack pack, uint32_t)
 {
     if (pack.streamAddr == (uint32_t*)m_rxStream)         // It's RECEIVING interruption - get data
     {
-        m_holder.m_rxRingBuffer.write(pack.data, pack.size);
-        // Send data to Offline or Instant signal:
-        #ifndef WITH_RTOS
-        if (m_holder.m_signalRx.isConnected())
-            m_holder.m_signalRx.activ(&m_holder.m_rxRingBuffer);
+        m_holder.m_rxRingBuffer.push(pack.data, pack.size);
+        // Send data to Callback, Offline or Instant signal:
+        if (m_holder.m_rxCallback)
+            m_holder.m_rxCallback(m_holder.m_rxRingBuffer);
         else if (m_holder.m_signalInstantRx.isConnected())
             m_holder.m_signalInstantRx.activ(&m_holder.m_rxRingBuffer);
-        #else
-        if (m_holder.m_signalInstantRx.isConnected())
-            m_holder.m_signalInstantRx.activ(&m_holder.m_rxRingBuffer);
+        #ifndef WITH_RTOS
+        else if (m_holder.m_signalRx.isConnected())
+            m_holder.m_signalRx.activ(&m_holder.m_rxRingBuffer);
         #endif
     }
     else if (pack.streamAddr == (uint32_t*)m_txStream)    // It's TNRANSMITTING interruption - send next data or release

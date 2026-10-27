@@ -6,11 +6,11 @@ namespace uart {
 
 etl::map<uint8_t, Port*, 10> Port::m_registeredUarts;
 
-Port::Port(USART_TypeDef* uart, uint32_t rxSize) : m_uart(uart),
-                                                   m_rxRingBuffer(rxSize),
-                                                   m_transceiver(*this),
-                                                   m_dmaTransceiver(*this),
-                                                   rxRingBufferSize(rxSize)
+Port::Port(USART_TypeDef* uart, i_face::I_RingBuffer& rxBuff) : 
+    m_uart(uart),
+    m_rxRingBuffer(rxBuff),
+    m_transceiver(*this),
+    m_dmaTransceiver(*this)
 {
     nvic = NvicManager::getInstance().getUartNvic(m_uart);
 }
@@ -113,7 +113,7 @@ void Port::setRxMode(Mode mode)
 {
     m_rxMode = mode;
     // Switch off DMA receiver if general:
-    if (m_rxMode == Mode::General)
+    if (m_rxMode == Mode::Pio)
         CLEAR_BIT(m_uart->CR3, USART_CR3_DMAR);
 }
 
@@ -121,7 +121,7 @@ void Port::setTxMode(Mode mode)
 {
     m_txMode = mode;
     // Switch off DMA receiver if general:
-    if (m_txMode == Mode::General)
+    if (m_txMode == Mode::Pio)
         CLEAR_BIT(m_uart->CR3, USART_CR3_DMAT);
 }
 
@@ -142,7 +142,7 @@ void Port::receiveViaDma(uint16_t size, bool circular)
         m_dmaTransceiver.startReading(size, circular);
 }
 
-void Port::setSlotRx(SlotInterface<RingBuffer*>*slot)
+void Port::setSlotRx(SlotInterface<i_face::I_RingBuffer*>*slot)
 {
     // Both (real and offline) signals can't be activated at once, so it may be connected one of them:
     if (m_signalInstantRx.isConnected())
@@ -154,7 +154,7 @@ void Port::setSlotRx(SlotInterface<RingBuffer*>*slot)
     #endif
 }
 
-void Port::setSlotInstantRx(SlotInterface<RingBuffer*>*slot)
+void Port::setSlotInstantRx(SlotInterface<i_face::I_RingBuffer*>*slot)
 {
     // Both (real and offline) signals can't be activated at once, so it may be connected one of them:
     #ifndef WITH_RTOS
@@ -162,6 +162,18 @@ void Port::setSlotInstantRx(SlotInterface<RingBuffer*>*slot)
         m_signalRx.disconnectAll();    // TODO: warning here!
     #endif
     m_signalInstantRx.connect(slot);
+}
+
+void Port::setRxCallback(RxCallback h)
+{
+    if (m_signalInstantRx.isConnected())
+        m_signalInstantRx.disconnectAll();
+    #ifndef WITH_RTOS
+    if (m_signalRx.isConnected())
+        m_signalRx.disconnectAll();
+    #endif
+    // Work only with callback:
+    m_rxCallback = h;
 }
 
 void Port::setDmaRxBufferSize (uint32_t bufferSize, bool doubleBufMode)
@@ -207,6 +219,11 @@ bool Port::dmaTxIsBusy(uint32_t timeoutMs)
         }
         return false;
     }
+}
+
+i_face::I_RingBuffer& Port::getBuffer()
+{
+    return m_rxRingBuffer;
 }
 
 }   // namespace uart

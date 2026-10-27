@@ -210,7 +210,7 @@ bool Configurator::readRca(uint32_t* rca, Result& result)
             result = Result::CardStatusError;
             return false;
         }
-        tempRca = response >> 16;
+        tempRca = response >> 16U;
     }
 
     *rca = tempRca;
@@ -222,7 +222,7 @@ bool Configurator::readCSD(uint32_t rca, CapacityType cardType, Result& result)
 {
     Command cmd
     {
-        .Argument = rca << 16,
+        .Argument = rca << 16U,
         .CmdIndex = Commands::GetCSD,
         .Response = ResponseSize::LongResponse,
         .WaitForInterrupt = false,
@@ -246,15 +246,15 @@ bool Configurator::readCSD(uint32_t rca, CapacityType cardType, Result& result)
     const uint16_t CmdEraseClass = 0x20;   // Bit 5 of the field Command Classes in CSD register
     if (cardType == CapacityType::StandartCapacity)
     {
-        m_deviceSize = (uint32_t)csdStruct1.DevSize2 | ((uint32_t)csdStruct1.DevSize1 << 2);
-        uint32_t mult = 1 << (csdStruct1.DevSizeMult + 2);  // 2 ^ (mult + 2)
+        m_deviceSize = (uint32_t)csdStruct1.DevSize2 | ((uint32_t)csdStruct1.DevSize1 << 2U);
+        uint32_t mult = 1U << (csdStruct1.DevSizeMult + 2);  // 2 ^ (mult + 2)
         m_cardInfo.blocksNumber = (m_deviceSize + 1) * mult;
-        m_cardInfo.blockSize = 1 << csdStruct1.MaxReadDataBlockLen;
+        m_cardInfo.blockSize = 1U << csdStruct1.MaxReadDataBlockLen;
         m_cardInfo.erasingSupport = (csdStruct1.CardCmdClasses & CmdEraseClass) ? true : false;
     }
     else if (cardType == CapacityType::HighExtCapacity)
     {
-        m_deviceSize = (uint32_t)csdStruct2.DevSize2 | ((uint32_t)csdStruct2.DevSize1 << 16);
+        m_deviceSize = (uint32_t)csdStruct2.DevSize2 | ((uint32_t)csdStruct2.DevSize1 << 16U);
         m_cardInfo.blocksNumber = (m_deviceSize + 1) * 1024;
         m_cardInfo.blockSize = 512; // Fixed
         m_cardInfo.erasingSupport = (csdStruct2.CardCmdClasses & CmdEraseClass) ? true : false;
@@ -326,12 +326,15 @@ bool Configurator::readSCR(SCR& scrStruct, Result& result)
     SET_BIT(m_sdmmc->ICR, m_StaticDataFlags);
 
     // Rearranging the fields to the desired position:
-    uint32_t scrbytes = (((tempSCR[0] & 0x000000FF) << 24)  | ((tempSCR[0] & 0x0000FF00) << 8)  | ((tempSCR[0] & 0x00FF0000) >> 8)  | ((tempSCR[0] & 0xFF000000) >> 24));
+    uint32_t scrbytes = (((tempSCR[0] & 0x000000FFU) << 24U)  | 
+                        ((tempSCR[0] & 0x0000FF00U) << 8U)  | 
+                        ((tempSCR[0] & 0x00FF0000U) >> 8U)  | 
+                        ((tempSCR[0] & 0xFF000000U) >> 24U));
     // Get hardvare specification:
-    uint8_t spec = (scrbytes & 0xF000000) >> 24;
-    uint8_t spec3 = (scrbytes & 0x8000) >> 15;
-    uint8_t spec4 = (scrbytes & 0x400) >> 10;
-    uint8_t specX = (scrbytes & 0x3C0) >> 6;
+    uint8_t spec = (scrbytes & 0xF000000U) >> 24U;
+    uint8_t spec3 = (scrbytes & 0x8000U) >> 15U;
+    uint8_t spec4 = (scrbytes & 0x400U) >> 10U;
+    uint8_t specX = (scrbytes & 0x3C0U) >> 6U;
 
     if ((spec == 0) && (spec3 == 0) && (spec4 == 0) && (specX == 0))
         scrStruct.spec = PhysicSpecification::Vers1_0;
@@ -384,7 +387,7 @@ bool Configurator::cardSelect(uint32_t rca, Result& result)
 {
     Command cmd
     {
-        .Argument = rca << 16,
+        .Argument = rca << 16U,
         .CmdIndex = Commands::SelectCard,
         .Response = ResponseSize::ShortResponse,
         .WaitForInterrupt = false,
@@ -397,7 +400,7 @@ bool Configurator::cardSelect(uint32_t rca, Result& result)
     uint32_t response = 0;
     m_cmdSender.getResponse(ResponseSize::ShortResponse, &response);
     const uint8_t blockBitPos = 25;
-    if (response & (1 << blockBitPos))
+    if (response & (1U << blockBitPos))
     {
         result = Result::StatusCardLocked;
         return false;
@@ -409,7 +412,7 @@ bool Configurator::setBlockSize(BlockSize blockSize, Result& result)
 {
     Command cmd
     {
-        .Argument = (1 << static_cast<uint8_t>(blockSize)),
+        .Argument = (1U << static_cast<uint8_t>(blockSize)),
         .CmdIndex = Commands::SetBlockLen,
         .Response = ResponseSize::ShortResponse,
         .WaitForInterrupt = false,
@@ -428,7 +431,7 @@ bool Configurator::readCardExtStatus(Result& result)
     }
 
     // Switching to application commands:
-    if (!toApplicationCmd(m_rca << 16, result))
+    if (!toApplicationCmd(m_rca << 16U, result))
         return false;
 
     // Data Path State Machine (DPSM) set to 64-byte block:
@@ -507,23 +510,23 @@ bool Configurator::readCardExtStatus(Result& result)
     SET_BIT(m_sdmmc->ICR, m_StaticDataFlags);
 
     // Convert received data to the struct:
-    switch ((sd_status[0] & 0xC0) >> 6)
+    switch ((sd_status[0] & 0xC0) >> 6U)
     {
     case 0b00: m_cardState.busWidth = BusWide::W1_bit;  break;
     case 0b10: m_cardState.busWidth = BusWide::W4_bits; break;
     }
 
-    m_cardState.securedMode = ((sd_status[0] & 0x20) >> 5) ? true : false;
+    m_cardState.securedMode = ((sd_status[0] & 0x20) >> 5U) ? true : false;
 
-    switch (((sd_status[0] & 0x00FF0000) >> 8) | ((sd_status[0] & 0xFF000000) >> 24))
+    switch (((sd_status[0] & 0x00FF0000) >> 8U) | ((sd_status[0] & 0xFF000000) >> 24U))
     {
     case 0: m_cardState.cardType = CardType::StandartRW; break;
     case 1: m_cardState.cardType = CardType::ReadOnly; break;
     case 2: m_cardState.cardType = CardType::OTP; break;
     }
 
-    m_cardState.protectedAreaSize = (((sd_status[1] & 0xFF) << 24)    | ((sd_status[1] & 0xFF00) << 8) |
-                                  ((sd_status[1] & 0xFF0000) >> 8) | ((sd_status[1] & 0xFF000000) >> 24));
+    m_cardState.protectedAreaSize = (((sd_status[1] & 0xFF) << 24U)    | ((sd_status[1] & 0xFF00U) << 8U) |
+                                  ((sd_status[1] & 0xFF0000) >> 8U) | ((sd_status[1] & 0xFF000000U) >> 24U));
 
     switch (sd_status[2] & 0xFF)
     {
@@ -536,17 +539,17 @@ bool Configurator::readCardExtStatus(Result& result)
 
     Log(lmSDMMC, Info) << "Get card Speed Class " << m_cardState.speedClass;
 
-    m_cardState.perfomanceMove = (sd_status[2] & 0xFF00) >> 8;
+    m_cardState.perfomanceMove = (sd_status[2] & 0xFF00) >> 8U;
 
-    uint8_t temp = (sd_status[2] & 0xF00000) >> 20;
+    uint8_t temp = (sd_status[2] & 0xF00000) >> 20U;
     if (temp < 16)
         m_cardState.aus = static_cast<AllocateUnitSize>(temp);
 
-    m_cardState.eraseSize = ((sd_status[2] & 0xFF000000) >> 16) | (sd_status[3] & 0xFF);
-    m_cardState.eraseTimeout = (sd_status[3] & 0xFC00) >> 10;
-    m_cardState.eraseOffset = (sd_status[3] & 0x0300) >> 8;
+    m_cardState.eraseSize = ((sd_status[2] & 0xFF000000) >> 16U) | (sd_status[3] & 0xFFU);
+    m_cardState.eraseTimeout = (sd_status[3] & 0xFC00) >> 10U;
+    m_cardState.eraseOffset = (sd_status[3] & 0x0300) >> 8U;
 
-    switch ((sd_status[3] & 0x00F0) >> 4)
+    switch ((sd_status[3] & 0x00F0) >> 4U)
     {
     case 0: m_cardState.uhsSpeedGrade = UHSMode::Less10Mbs; break;
     case 1: m_cardState.uhsSpeedGrade = UHSMode::More10Mbs; break;
@@ -557,7 +560,7 @@ bool Configurator::readCardExtStatus(Result& result)
     if ((temp > 6) && (temp < 16))
         m_cardState.uhsAus = static_cast<AllocateUnitSize>(temp);
 
-    switch ((sd_status[4] & 0xFF000000) >> 24)
+    switch ((sd_status[4] & 0xFF000000) >> 24U)
     {
     case 0:  m_cardState.videoSpeed = CardVideoClass::NotSupported;  break;
     case 6:  m_cardState.videoSpeed = CardVideoClass::Class6;  break;
@@ -593,7 +596,7 @@ bool Configurator::setBusWidth(BusWide busWide, Result& result)
     uint32_t response = 0;
     m_cmdSender.getResponse(ResponseSize::ShortResponse, &response);
     const uint8_t blockBitPos = 25;
-    if (response & (1 << blockBitPos))
+    if (response & (1U << blockBitPos))
     {
         result = Result::StatusCardLocked;
         return false;
@@ -607,7 +610,7 @@ bool Configurator::setBusWidth(BusWide busWide, Result& result)
     }
 
     // Switching to application commands:
-    if (!toApplicationCmd(m_rca << 16, result))
+    if (!toApplicationCmd(m_rca << 16U, result))
         return false;
 
     // Data Path State Machine (DPSM) configuration to 8-byte block:
@@ -634,7 +637,7 @@ bool Configurator::setBusWidth(BusWide busWide, Result& result)
     }
 
     // Switching to application commands:
-    if (!toApplicationCmd(m_rca << 16, result))
+    if (!toApplicationCmd(m_rca << 16U, result))
         return false;
 
     // Enable 4-wire bus:
@@ -654,7 +657,7 @@ SdCardState Configurator::readCardState(uint32_t rca)
     Result result;
     Command cmd
     {
-        .Argument = rca << 16,
+        .Argument = rca << 16U,
         .CmdIndex = Commands::GetStatus,
         .Response = ResponseSize::ShortResponse,
         .WaitForInterrupt = false,
@@ -665,7 +668,7 @@ SdCardState Configurator::readCardState(uint32_t rca)
 
     uint32_t response = 0;
     m_cmdSender.getResponse(ResponseSize::ShortResponse, &response);
-    uint8_t stateValue = (response >> 9) & 0x0F;
+    uint8_t stateValue = (response >> 9U) & 0x0FU;
     return (stateValue >= static_cast<uint8_t>(SdCardState::Error)) ? SdCardState::Error : static_cast<SdCardState>(stateValue);
 }
 

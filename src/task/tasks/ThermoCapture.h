@@ -5,8 +5,11 @@
 #include <semphr.h>
 #include "Signal.h"
 #include "Mlx90640.h"
+#include "Interface.h"
+#include "driver/dma/Buffer.h"
 
 namespace driver { class I2C; }
+
 using namespace thermomatrix;
 
 namespace task
@@ -60,10 +63,13 @@ private:
         Error               // Error state
     } m_state;  // TODO: state checkins and errors handling
 
-    driver::I2C* const m_i2c;       // Periphery driver class (TODO: is needed to store this pointer???)
+    driver::I2C* const m_i2c;       // Periphery driver class
     const uint16_t m_i2cAddr;       // Sensor I2C slave address
     Signal<bool> m_sensorPower;     // Signal for Mlx90640 sensor power control
+
+    driver::dma::Buffer<1696>m_thermoBuffer;
     Mlx90640 m_thermoDriver;                        // MLX90640 low-leveled driver
+
     Signal<const ThermoArray*> m_sendReadyData;     // Signal for sending ready (calculated) thermo data to consumers
     Mlx90640::RefreshRate m_refreshRate;            // Refresh rate saved config
 

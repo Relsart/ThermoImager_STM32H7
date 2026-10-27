@@ -4,6 +4,7 @@
 #include "stm32h7xx.h"
 #include "TransceiverDma.h"
 #include "etl/atomic.h"
+#include "Interface.h"
 
 /* Option for TIMINGS register calculating. For memory saving it can be switched off, 
    and the previously calculated timings settings can be hardcoded */
@@ -12,7 +13,7 @@
 namespace driver
 {
 
-class I2C : public SlotInterface <Irq>
+class I2C : public i_face::I_I2C, public SlotInterface <Irq>
 {
 public:
     friend class DmaTransceiver;
@@ -45,6 +46,7 @@ private:
     Signal<uint16_t> m_XferComplete;    // Transaction complete signal. Using with DMA Receiving. Parameter is Slave address
     Speed m_speed;                      // Saved speed configuration (for re-initialisation purpose)
 
+    i_face::I_DmaBuffer* m_currentBuf;  // Current DMA transaction buffer
     uint32_t m_currentXferSize;         // Current transaction size in bytes
     uint32_t m_totalXferSize;           // Total transfer size in bytes
     uint16_t m_currentSlaveAddr;        // Saved slave i2c address
@@ -61,11 +63,6 @@ private:
     void transConfig(TransferConf& conf);
 
     /**
-     * @brief Bus reset
-     */
-    void resetBus();
-
-    /**
      * @brief I2C interruptions handler
      */
     void run(uint8_t, uint32_t) override;
@@ -77,10 +74,10 @@ private:
      * @param [in] regAddr register address
      * @param [in] regAddrSize bytesize of register address (1 or 2)
      * @param [in] dest destination buffer address
-     * @param [in] destSize receiving data size
+     * @param [in] readSize receiving data size
      * @return result: true == Ok (but it is not a transaction finish!)
      */
-    bool readRegViaDMA(uint16_t devAddr, uint8_t* regAddr, uint8_t regAddrSize, uint8_t *dest, uint32_t destSize);
+    bool readRegViaDMA(uint16_t devAddr, uint8_t* regAddr, uint8_t regAddrSize, i_face::I_DmaBuffer& dest, size_t readSize, size_t bufferOffset);
 
 public:
     /**
@@ -93,6 +90,11 @@ public:
      * @brief initialization
      */
     void init(Speed speed);
+    
+    /**
+     * @brief Bus reset
+     */
+    void resetBus() override;
 
     /**
      * @brief Subscribe to receiver DMA stream
@@ -106,36 +108,36 @@ public:
     void xferCmpltSubscribeISR(SlotInterface<uint16_t>*slot);
 
     /**
-     * @brief Checking stream state
+     * @brief Checking stream state (for DMA exchanging)
      * @return True == is busy
      */
-    bool isDmaBusy();
+    bool isBusy() override;
 
     /**
-     * @brief Read registers from slave device. Write 8-bit register address, then read data.
-     * @details Register address send in General mode, data receiving- in DMA.
-     * @note User wrapper for readRegViaDMA
+     * @brief Read registers from slave device. Write 8-bit register address, then read data (by byte).
+     * @details Register address send in PIO mode, data receiving- in DMA.
+     * @note Wrapper for readRegViaDMA
      * 
      * @param [in] devAddr slave device address
      * @param [in] regAddr register address (8-bit length)
      * @param [in] dest destination buffer address
-     * @param [in] destSize receiving data size (in bytes)
+     * @param [in] readSize receiving data size (in bytes)
      * @return result: true == Ok (but it is not a transaction finish!)
      */
-    bool readRegViaDMA_8bitAddr(uint16_t devAddr, uint8_t regAddr, uint8_t *dest, uint32_t destSize);
+    bool read8bReg_DMA(uint16_t devAddr, uint8_t regAddr, i_face::I_DmaBuffer& dest, size_t readSize, size_t bufferOffset) override;
 
     /**
-     * @brief Read registers from slave device. Write 16-bit register address, then read data.
-     * @details Register address send in General mode, data receiving- in DMA.
-     * @note User wrapper for readRegViaDMA
+     * @brief Read registers from slave device. Write 16-bit register address, then read data (by byte).
+     * @details Register address send in PIO mode, data receiving- in DMA.
+     * @note Wrapper for readRegViaDMA
      * 
      * @param [in] devAddr slave device address
      * @param [in] regAddr register address (16-bit length)
      * @param [in] dest destination buffer address
-     * @param [in] destSize receiving data size (in bytes)
+     * @param [in] readSize receiving data size (in bytes)
      * @return result: true == Ok (but it is not a transaction finish!)
      */
-    bool readRegViaDMA_16bitAddr(uint16_t devAddr, uint16_t regAddr, uint8_t *dest, uint32_t destSize);
+    bool read16bReg_DMA(uint16_t devAddr, uint16_t regAddr, i_face::I_DmaBuffer& dest, size_t readSize, size_t bufferOffset) override;
 
     /**
      * @brief Write data to slave
@@ -145,7 +147,7 @@ public:
      * @param [in] timeout waiting timeout for ready slave device (10ms default)
      * @return result: true == Ok
      */
-    bool masterTx(uint16_t devAddr, uint8_t *source, uint16_t size, uint32_t timeout = 100);
+    bool masterTx(uint16_t devAddr, uint8_t *source, uint16_t size, uint32_t timeout = 100) override;
 
     /**
      * @brief Read data from slave
@@ -155,7 +157,7 @@ public:
      * @param [in] timeout waiting timeout for ready slave device (10ms default)
      * @return result: true == Ok
      */
-    bool masterRx(uint16_t devAddr, uint8_t *dest, uint16_t size, uint32_t timeout = 100);
+    bool masterRx(uint16_t devAddr, uint8_t *dest, uint16_t size, uint32_t timeout = 100) override;
 
     /**
      * @brief Read and write data in one transaction 
@@ -167,7 +169,7 @@ public:
      * @param [in] timeout waiting timeout for ready slave device (10ms default)
      * @return result: true == Ok
      */
-    bool masterTxRx(uint16_t devAddr, uint8_t *source, uint16_t sourceSize, uint8_t *dest, uint32_t destSize, uint32_t timeout = 100);
+    bool masterTxRx(uint16_t devAddr, uint8_t *source, uint16_t sourceSize, uint8_t *dest, uint32_t destSize, uint32_t timeout = 100) override;
 };
 
 }   // namespace driver

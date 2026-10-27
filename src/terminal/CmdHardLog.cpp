@@ -105,6 +105,4 @@ void CmdHardFaultLog::exec (uint32_t argc, char** arg)
     Log::enable ();
 }
 
-
-
 }   // namespace console

@@ -16,7 +16,7 @@ namespace can {
 
 class Bus;
 
-class Receiver: public SlotInterface<MessageRingBuffer<Message>*>
+class Receiver: public SlotInterface<i_face::I_MessageRingBuffer<Message>*>
 {
 public:
     friend class Bus;
@@ -39,7 +39,7 @@ private:
     /**
      * @brief Incoming frames handler
      */
-    void run(MessageRingBuffer<Message>* buffer, uint32_t) override;
+    void run(i_face::I_MessageRingBuffer<Message>* buffer, uint32_t) override;
 };
 
 }   // namespace uart

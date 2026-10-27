@@ -113,33 +113,33 @@ Result CommandSender::checkResp1Error()
     if ((response & R1ErrorBits) == 0)
         return Result::Ok;
     // Get response error:
-    else if (response & (1 << 31))
+    else if (response & (1U << 31U))
         return Result::StatusOutOfRange;
-    else if (response & (1 << 30))
+    else if (response & (1U << 30U))
         return Result::StatusAddrError;
-    else if (response & (1 << 29))
+    else if (response & (1U << 29U))
         return Result::StatusBlockLenErr;
-    else if ((response & (1 << 27)) || (response & (1 << 28)))
+    else if ((response & (1U << 27U)) || (response & (1U << 28U)))
         return Result::StatusEraseError;
-    else if (response & (1 << 26))
+    else if (response & (1U << 26U))
         return Result::StatusWriteProtect;
-    else if (response & (1 << 24))
+    else if (response & (1U << 24U))
         return Result::StatusUnlockFail;
-    else if (response & (1 << 23))
+    else if (response & (1U << 23U))
         return Result::StatusCrcError;
-    else if (response & (1 << 22))
+    else if (response & (1U << 22U))
         return Result::StatusCmdError;
-    else if (response & (1 << 21))
+    else if (response & (1U << 21U))
         return Result::StatusEccError;
-    else if (response & (1 << 20))
+    else if (response & (1U << 20U))
         return Result::StatusCtrlError;
-    else if (response & (1 << 19))
+    else if (response & (1U << 19U))
         return Result::StatusOtherError;
-    else if (response & (1 << 16))
+    else if (response & (1U << 16U))
         return Result::StatusCsdError;
-    else if (response & (1 << 15))
+    else if (response & (1U << 15U))
         return Result::StatusEraseSkip;
-    else if (response & (1 << 3))
+    else if (response & (1U << 3U))
         return Result::StatusIdentError;
     else
         return Result::CardStatusError;   

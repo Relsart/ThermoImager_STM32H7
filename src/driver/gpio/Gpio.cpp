@@ -42,7 +42,7 @@ Pin::Pin(GpioPort GPIOx, uint8_t pin, PinType type, Pull _pull, PinSpeed _speed,
     m_extiFront(front),
     m_GPIOx(GPIOx), 
     m_pin(pin), 
-    m_pinPos(1 << pin)
+    m_pinPos(1U << pin)
 {
     config(m_GPIOx, m_pin, type, _pull, _speed, _altFunc);
 }
@@ -53,7 +53,7 @@ Pin::Pin(GpioPort GPIOx, uint8_t pin, PinType type, Pull _pull, ExtiFront front)
     m_extiFront(front),
     m_GPIOx(GPIOx),
     m_pin(pin),
-    m_pinPos(1 << pin)
+    m_pinPos(1U << pin)
 {
     config(m_GPIOx, m_pin, type, _pull, PinSpeed::Medium, AltFuncNumber::Af0);
 }
@@ -63,7 +63,7 @@ Pin::Pin(GpioPort GPIOx, uint8_t pin, PinType type, Pull _pull, PinSpeed _speed,
     m_exti(*this),
     m_GPIOx(GPIOx),
     m_pin(pin),
-    m_pinPos(1 << pin)
+    m_pinPos(1U << pin)
 {
     config(m_GPIOx, m_pin, type, _pull, _speed, _altFunc);
 }
@@ -100,15 +100,7 @@ void Pin::config(GpioPort GPIOx, uint8_t pin, PinType type, Pull _pull, PinSpeed
     }
 
     // Pin configuration saving for diagnistic (pinConfigDiagnostic())
-    PinConfig pinConfig;
-    pinConfig.port = GPIOx;
-    pinConfig.pin = pin;
-    if (!diagnosticArray)
-    {
-        diagnosticArray = new PinConfig[150];
-        diagnosticIndex = 0;
-    }
-    diagnosticArray[diagnosticIndex++] = pinConfig;
+    registerPin(GPIOx, pin);
 
     // Pin mode configuration:
     uint8_t mode = 0;
@@ -116,40 +108,40 @@ void Pin::config(GpioPort GPIOx, uint8_t pin, PinType type, Pull _pull, PinSpeed
     {
         case PinType::Input:            // Discrete input
             mode = 0b00;
-            CLEAR_BIT(GPIOx->OTYPER, 1 << pin);
+            CLEAR_BIT(GPIOx->OTYPER, 1U << pin);
             break;
         case PinType::Inp_analog:       // Analog input
             mode = 0b11;
-            CLEAR_BIT(GPIOx->OTYPER, 1 << pin);
+            CLEAR_BIT(GPIOx->OTYPER, 1U << pin);
             break;
         case PinType::Out_pushpull:     // Simple active output (0V, 3,3V)
             _pull = Pull::NoPull;       // In output modes no pulling!
             mode = 0b01;
-            CLEAR_BIT(GPIOx->OTYPER, 1 << pin);
+            CLEAR_BIT(GPIOx->OTYPER, 1U << pin);
             break;
         case PinType::Out_opendrain:    // Open-drain output (0-to gnd, 1-floating)
             _pull = Pull::NoPull;       // In output modes no pulling!
             mode = 0b01;
-            SET_BIT(GPIOx->OTYPER, 1 << pin);
+            SET_BIT(GPIOx->OTYPER, 1U << pin);
             break;
         case PinType::Alt_pushpull:     // Alternative ouutput in general (active) mode
         case PinType::Alt_opendrain:    // Alternative ouutput in open-drain mode
             mode = 0b10;
             uint8_t altPosition = (pin % 8) * 4;
             if (pin < 8)
-                MODIFY_REG(GPIOx->AFR[0], 0xf << altPosition, static_cast<uint8_t>(_altFunc) << altPosition);
+                MODIFY_REG(GPIOx->AFR[0], 0xfU << altPosition, static_cast<uint8_t>(_altFunc) << altPosition);
             else
-                MODIFY_REG(GPIOx->AFR[1], 0xf << altPosition, static_cast<uint8_t>(_altFunc) << altPosition);
+                MODIFY_REG(GPIOx->AFR[1], 0xfU << altPosition, static_cast<uint8_t>(_altFunc) << altPosition);
 
             if (type == PinType::Alt_opendrain)
-                SET_BIT(GPIOx->OTYPER, 1 << pin);
+                SET_BIT(GPIOx->OTYPER, 1U << pin);
             else
-                CLEAR_BIT(GPIOx->OTYPER, 1 << pin);
+                CLEAR_BIT(GPIOx->OTYPER, 1U << pin);
             break;
     }
 
-    MODIFY_REG(GPIOx->MODER, 0b11 << (pin*2), mode << (pin*2));
-    MODIFY_REG(GPIOx->PUPDR, 0b11 << (pin*2), static_cast<uint8_t>(_pull) << (pin*2));
+    MODIFY_REG(GPIOx->MODER, 0b11U << (pin*2), mode << (pin*2));
+    MODIFY_REG(GPIOx->PUPDR, 0b11U << (pin*2), static_cast<uint8_t>(_pull) << (pin*2));
 }
 
 void Pin::set(bool sw)
@@ -189,6 +181,19 @@ void Pin::run(bool pinOn, uint32_t)
         setOn();
     else
         setOff();
+}
+
+inline void Pin::registerPin(GPIO_TypeDef* GPIOx, uint8_t pin)
+{
+    PinConfig pinConfig;
+    pinConfig.port = GPIOx;
+    pinConfig.pin = pin;
+    if (!diagnosticArray)
+    {
+        diagnosticArray = new PinConfig[150];
+        diagnosticIndex = 0;
+    }
+    diagnosticArray[diagnosticIndex++] = pinConfig;
 }
 
 void Pin::pinConfigDiagnostic()

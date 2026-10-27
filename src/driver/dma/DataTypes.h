@@ -136,7 +136,7 @@ enum class MuxRequestIDs
 /**
  * @brief Stream direction
  */
-enum class Direction
+enum class Direction : uint8_t
 {
     Periph2Mem = 0, // Periphery -> to memory
     Mem2Periph = 1, // Memory -> to periphery

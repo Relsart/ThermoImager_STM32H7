@@ -4,6 +4,10 @@
 
 namespace console {
 
+/**
+ * @brief Command for reading saved information about the last Hard Fault from Flash memory
+ *        Command name: faultlog
+ */
 class CmdHardFaultLog : public CmdInterface
 {
 private:
