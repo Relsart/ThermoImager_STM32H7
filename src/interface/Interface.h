@@ -16,7 +16,7 @@ namespace i_face
 class I_DmaBuffer
 {
 public:
-    virtual ~I_DmaBuffer() = default;    // Interface virtual destructor
+    virtual ~I_DmaBuffer() = default;
 
     virtual void* getAddr() = 0;
     virtual const void* getAddr() const = 0;
@@ -175,7 +175,7 @@ public:
 class I_I2C
 {
 public:
-    virtual ~I_I2C() = default;     // Interface virtual destructor
+    virtual ~I_I2C() = default;
     /* General functional: */
     virtual bool isBusy() = 0;
     virtual void resetBus() = 0;
@@ -185,6 +185,17 @@ public:
     /* Extended registers access methods */
     virtual bool read8bReg_DMA(uint16_t addr, uint8_t regAddr, I_DmaBuffer& dest, size_t readSize, size_t bufferOffset = 0) = 0;
     virtual bool read16bReg_DMA(uint16_t addr, uint16_t regAddr, I_DmaBuffer& dest, size_t readSize, size_t bufferOffset = 0) = 0;
+};
+
+/**
+ * @brief Time delayer interface (e.g. DWT timer)
+ */
+class I_Delayer
+{
+public:
+    virtual ~I_Delayer() = default;
+    virtual void delayMs(uint32_t ms) = 0;
+    virtual void delayUs(uint32_t us) = 0;
 };
 
 }   // namespace i_face

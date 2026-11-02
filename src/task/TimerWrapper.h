@@ -22,7 +22,7 @@ public:
 
     Timer(UBaseType_t timeSetMs) : m_ticksSet(pdMS_TO_TICKS(timeSetMs))
     {
-        m_timerHandle = xTimerCreateStatic("Timer", m_ticksSet, pdTRUE, this, timerStaticCallback, &m_timerBuffer);
+        m_timerHandle = xTimerCreateStatic("Timer", m_ticksSet, pdTRUE, this, staticCallback, &m_buffer);
     }
 
     Timer(const Timer&) = delete;
@@ -47,11 +47,11 @@ public:
 
 private:
     TimerHandle_t m_timerHandle;
-    StaticTimer_t m_timerBuffer;    // Static buffer for timer
+    StaticTimer_t m_buffer;    // Static buffer for timer
     TickType_t m_ticksSet;          // Time preset for timer (in Ticks)
     Handler m_handler;              // Timers callback
 
-    static void timerStaticCallback(TimerHandle_t xTimer)
+    static void staticCallback(TimerHandle_t xTimer)
     {
         // Extrtact "this" pointer from pvTimerID[1]:
         void* pvID = pvTimerGetTimerID(xTimer);
@@ -62,8 +62,6 @@ private:
                 pInstance->m_handler();
         }
     }
-
-
 };
 
 

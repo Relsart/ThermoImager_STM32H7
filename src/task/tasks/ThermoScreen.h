@@ -55,8 +55,8 @@ private:
     SemaphoreHandle_t mainBufFreeSemphr;    // Semaphore: Main Pixels Buffer is free (no DMA process uses it) 
     
     /* Screen coodrinates variables: */
-    static const uint16_t m_MatrixCoils = MLX90640_COLUMN_NUM;              // Number of thermomatrix coils
-    static const uint16_t m_MatrixRows = MLX90640_LINE_NUM;                 // Number of thermomatrix rows
+    static const uint16_t m_MatrixCoils = 32;              // Number of thermomatrix coils
+    static const uint16_t m_MatrixRows = 24;               // Number of thermomatrix rows
     static const uint16_t m_ImgScale = 8;                                   // Size of one logical thermoframe pixel (in screen pixels)
     static const uint16_t m_ImgCoilsPixSize = m_ImgScale * m_MatrixCoils;   // Number of coils in thermoframe (in screen pixels) 256
     static const uint16_t m_ImgRowsPixSize = m_ImgScale * m_MatrixRows;     // Number of rows in thermoframe (in screen pixels) 192
