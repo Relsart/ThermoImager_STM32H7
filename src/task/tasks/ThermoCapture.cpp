@@ -31,6 +31,7 @@ bool ThermoMatrixManager::init(thermomatrix::Mlx90640::RefreshRate refreshRate)
 
     /* Powering on (if wasn't) */
     m_sensorPower.activ(true);
+    driver::DwtTimer::getInstance().delayMs(10);
 
     /* Init the device */
     m_refreshRate = refreshRate;
