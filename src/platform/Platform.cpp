@@ -75,8 +75,10 @@ void Mcu::init ()
         Pin::config (GPIOD, 5, PinType::Alt_pushpull, Pull::NoPull, PinSpeed::High, AltFuncNumber::AfUart2);     // USART2 TX
         Pin::config (GPIOD, 6, PinType::Alt_pushpull, Pull::NoPull, PinSpeed::High, AltFuncNumber::AfUart2);     // USART2 RX
         /*  I2C  */
-        Pin::config (GPIOF, 1, PinType::Alt_opendrain, Pull::NoPull, PinSpeed::VeryHigh, AltFuncNumber::I2C_2);  // I2C_2 SCL
-        Pin::config (GPIOF, 0, PinType::Alt_opendrain, Pull::NoPull, PinSpeed::VeryHigh, AltFuncNumber::I2C_2);  // I2C_2 SDA
+        //Pin::config (GPIOF, 1, PinType::Alt_opendrain, Pull::NoPull, PinSpeed::VeryHigh, AltFuncNumber::I2C_2);  // I2C_2 SCL
+        //Pin::config (GPIOF, 0, PinType::Alt_opendrain, Pull::NoPull, PinSpeed::VeryHigh, AltFuncNumber::I2C_2);  // I2C_2 SDA
+        Pin::config (GPIOB, 10, PinType::Alt_opendrain, Pull::NoPull, PinSpeed::VeryHigh, AltFuncNumber::I2C_2);  // I2C_2 SCL
+        Pin::config (GPIOB, 11, PinType::Alt_opendrain, Pull::NoPull, PinSpeed::VeryHigh, AltFuncNumber::I2C_2);  // I2C_2 SDA
         /*  SPI  */
         Pin::config (GPIOA, 5, PinType::Alt_pushpull, Pull::PullUp, PinSpeed::VeryHigh, AltFuncNumber::AfSpi1);  // SPI1_SCK
         Pin::config (GPIOA, 7, PinType::Alt_pushpull, Pull::NoPull, PinSpeed::VeryHigh, AltFuncNumber::AfSpi1);  // SPI1_MOSI
@@ -118,7 +120,7 @@ void Mcu::init ()
             .mode = DeviceMode::Master,        // Master mode
             .firstBit = FirstBit::Msb,         // Order MSB first
             .dirMode = WorkMethod::TwoLines,   // Full duplex
-            .speedDiv = FreqPrescaler::Div8,   // SCK frequency
+            .speedDiv = FreqPrescaler::Div16,   // SCK frequency
             .nssMode = CsMode::Soft,           // NSS signal software control
             .sckPol = Level::High,             // SCK low level in idle
             .sckPhase = Phase::Second,         // Signal capture at first front of SCK
@@ -179,6 +181,7 @@ bool Peripheral::init()
     graphic::st77xx::Config dicplayConf;
     dicplayConf.chip = graphic::st77xx::ChipType::St7796;
     dicplayConf.colOrder = graphic::st77xx::ColourOrder::Bgr;
+    dicplayConf.rotate180 = true;
     if (m_display.init(dicplayConf))
     {
         m_display.clearScreen();
