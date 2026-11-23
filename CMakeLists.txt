@@ -39,8 +39,8 @@ include_directories(CMSIS/Device/ST/STM32H7xx/Include CMSIS/Include)
 
 
 # extern quartz frequency
-add_definitions(-DHSE_VALUE=8000000)
-#add_definitions(-DHSE_VALUE=25000000)
+#add_definitions(-DHSE_VALUE=8000000)
+add_definitions(-DHSE_VALUE=25000000)
 
 set(MCU     -mthumb 
             -mcpu=cortex-m7 

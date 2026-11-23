@@ -34,12 +34,13 @@ bool ThermoMatrixManager::init(thermomatrix::Mlx90640::RefreshRate refreshRate)
 
     /* Init the device */
     m_refreshRate = refreshRate;
+
     if (!m_thermoDriver.init(m_refreshRate))
         return false;
 
     if (!m_thermoDriver.readParameters())
         return false;
-
+    
     if (m_dataReadySmphr == NULL)
         m_dataReadySmphr = xSemaphoreCreateBinary();
     if (m_frameRequestSmphr == NULL)
@@ -66,8 +67,9 @@ void ThermoMatrixManager::faultHandler()
 {
     /* Device hard reset */
     m_sensorPower.activ(false);
-    driver::DwtTimer::getInstance().delayMs(200);
+    vTaskDelay(pdMS_TO_TICKS(10));
     m_sensorPower.activ(true);
+    vTaskDelay(pdMS_TO_TICKS(10));
 
     /* Re-initialisation */
     if (m_thermoDriver.init(m_refreshRate))

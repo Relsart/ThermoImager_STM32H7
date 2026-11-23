@@ -65,14 +65,37 @@ void DwtTimer::ticksDelay()
 
 void DwtTimer::delayMs(uint32_t ms)
 {
-    m_ticksLeft = ms * (SystemCoreClock / 1000);
+    m_ticksLeft = ms * (SystemCoreClock / 1000U);
     ticksDelay();
 }
 
 void DwtTimer::delayUs(uint32_t us)
 {
-    m_ticksLeft = us * (SystemCoreClock / 1000000);
+    m_ticksLeft = us * (SystemCoreClock / 1000000U);
     ticksDelay();
+}
+
+void DwtTimer::startTiming()
+{
+    m_ticksPerMs = SystemCoreClock / 1000U;
+    m_ticksPerUs = SystemCoreClock / 1000000U;
+    m_timingTicks = DWT->CYCCNT;
+}
+    
+uint32_t DwtTimer::getTimingMs()
+{
+    if (m_ticksPerMs > 0)
+        return (DWT->CYCCNT - m_timingTicks) / m_ticksPerMs;
+    else
+        return 0;
+}
+
+uint32_t DwtTimer::getTimingUs()
+{
+    if (m_ticksPerUs > 0)
+        return (DWT->CYCCNT - m_timingTicks) / m_ticksPerUs;
+    else
+        return 0;
 }
 
 }   // namespace driver

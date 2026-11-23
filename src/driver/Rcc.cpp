@@ -9,25 +9,13 @@ namespace driver {
  */
 
 #if HSE_VALUE == 8000000U
-/*  Settings for external 8 MHz quartz:
-    SysClock = 64 MHz
-    PLL1 out (P) = 64 MHz
-    PLL1 out (Q) = 32 MHz
-    PLL1 out (R) = 128 MHz  */
-/*#define DIVM_1  2U
-#define DIVN_1  64U
-#define DIVP_1  4U
-#define DIVQ_1  8U
-#define DIVR_1  2U
-#define FRACN_1 0U
-#define HPRE_Prescaler  RCC_D1CFGR_HPRE_DIV1
-#define D2PRE RCC_D2CFGR_D2PPRE1_DIV1*/
 
 /*  Settings for external 8 MHz quartz:
     SysClock = 400 MHz
     PLL1 out (P) = 400 MHz
     PLL1 out (Q) = 200 MHz
     PLL1 out (R) = 400 MHz  */
+
 #define DIVM_1  2U
 #define DIVN_1  200U
 #define DIVP_1  2U
@@ -49,50 +37,83 @@ namespace driver {
 #define FRACN_3 0U
 
 #elif HSE_VALUE == 25000000U
-/*  Settings for external 25 MHz quartz:  */
-/*  SysClock = 400 MHz;  PLL1 out (P, Q, R) = 100 MHz  */
+/*  Settings for external 25 MHz quartz:
+    SysClock = 400 MHz
+    PLL1 out (P) = 400 MHz
+    PLL1 out (Q) = 200 MHz
+    PLL1 out (R) = 400 MHz  */
+
 #define DIVM_1  5U
 #define DIVN_1  160U
 #define DIVP_1  2U
-#define DIVQ_1  8U
-#define DIVR_1  8U
+#define DIVQ_1  2U
+#define DIVR_1  2U
 #define FRACN_1 0U
 #define HPRE_Prescaler  RCC_D1CFGR_HPRE_DIV4
 #define D2PRE RCC_D2CFGR_D2PPRE1_DIV1
-/*  SysClock = 100 MHz;  PLL1 out (P, Q, R) = 100 MHz  */
-// #define DIVM_1  8U
-// #define DIVN_1  64U
-// #define DIVP_1  2U
-// #define DIVQ_1  2U
-// #define DIVR_1  2U
-// #define FRACN_1 0U
-// #define HPRE_Prescaler  RCC_D1CFGR_HPRE_DIV1
-// #define D2PRE RCC_D2CFGR_D2PPRE1_DIV2
+
+/*  PLL3: for I2C (50MHz max recommended): 
+    PLL3 out (P) = 100 MHz
+    PLL3 out (Q) = 100 MHz
+    PLL3 out (R) = 50 MHz   */
 
 #define DIVM_3  5U
 #define DIVN_3  100U
 #define DIVP_3  8U
 #define DIVQ_3  8U
-#define DIVR_3  8U
+#define DIVR_3  10U
 #define FRACN_3 0U
 #endif
 
 bool Rcc::extClockConfig()
 {
     __disable_irq();
+    DwtTimer::TimeoutData param {0};
+
+    /* * * * * * * *  Switching Power Regulator Voltage Scale (VOS)  * * * * * * * */
+    /* * * * * * * *          Only for SysClock > 200 Mhz !          * * * * * * * */
+
+    // Enable SysCfgController clock (is necessary for PWR and VOS0):
+    SET_BIT(RCC->APB4ENR, RCC_APB4ENR_SYSCFGEN);
+    // Select the power supply (example for the built-in LDO, required for H7!)
+    // If this bit is not confirmed, VOS registers may be blocked!
+    SET_BIT(PWR->CR3, PWR_CR3_LDOEN);
+    // Waiting for power stabilization:
+    param = driver::DwtTimer::getInstance().timeoutInit(500);
+    while (READ_BIT(PWR->CSR1, PWR_CSR1_ACTVOSRDY) == 0)
+    {
+        if (DwtTimer::getInstance().checkTimeout(param)) return false;
+    } 
+    // Switch controller to VOS1 mode:
+    PWR->D3CR |= PWR_D3CR_VOS_1 | PWR_D3CR_VOS_0;
+    // Waiting for switching to 1.2:
+    param = driver::DwtTimer::getInstance().timeoutInit(500);
+    while (READ_BIT(PWR->D3CR, PWR_D3CR_VOSRDY) == 0)
+    {
+        if (DwtTimer::getInstance().checkTimeout(param)) return false;
+    }
+    // Enable Overdrive (rise to ~1.3 В) and wait for stabilization of new power level:
+    SYSCFG->PWRCR |= SYSCFG_PWRCR_ODEN;
+    param = driver::DwtTimer::getInstance().timeoutInit(500);
+    while (!(PWR->D3CR & PWR_D3CR_VOSRDY))
+    {
+        if (DwtTimer::getInstance().checkTimeout(param)) return false;
+    }
+    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+    
 
     // External quartz enabling:
     SET_BIT(RCC->CR, RCC_CR_HSEON);                        // Enable HSE external clock and waiting for enabling
-    driver::DwtTimer::TimeoutData param = driver::DwtTimer::getInstance().timeoutInit(1000);
+    param = DwtTimer::getInstance().timeoutInit(1000);
     while (READ_BIT(RCC->CR, RCC_CR_HSERDY) == 0)
     {
-        if (driver::DwtTimer::getInstance().checkTimeout(param)) return false;
+        if (DwtTimer::getInstance().checkTimeout(param)) return false;
     }
 
     // PLL settings:
     CLEAR_BIT(RCC->CR, RCC_CR_PLL1ON);                     // Disable PLL1 and wait for disabling
     param = driver::DwtTimer::getInstance().timeoutInit(1000);
-    while (READ_BIT (RCC->CR, RCC_CR_PLL1RDY) != 0)
+    while (READ_BIT(RCC->CR, RCC_CR_PLL1RDY) != 0)
     {
         if (driver::DwtTimer::getInstance().checkTimeout(param)) return false;
     }
